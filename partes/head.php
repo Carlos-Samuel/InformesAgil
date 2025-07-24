@@ -1,25 +1,33 @@
 <title>Reportes</title>
 
 <!-- Basico de la pagina -->
+<title>Reportes</title>
+
+<!-- Metadatos -->
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
-<meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
-<meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, shrink-to-fit=no" name="viewport">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
-<!-- Para movil -->
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-
-
-<!-- Icono de página -->
+<!-- Icono -->
 <link rel="icon" type="image/x-icon" href="images/favicon.ico">
 
-<!-- Librerías CSS clientes -->
+<!-- CSS -->
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/colors/blue.css">
 <link rel="stylesheet" href="bootstrap-5.1.3-dist/css/bootstrap.min.css">
-
-<!-- Noty -->
 <link rel="stylesheet" href="css/noty.min.css">
+<link rel='stylesheet' href='css/remixicon.css'>
+<link rel='stylesheet' href='css/css-pro-layout.css'>
+<link rel='stylesheet' href='css/fonts_googleapis.css'>
+<link rel="stylesheet" href="css/style_sidebar.css">
+
+<!-- Font Awesome desde CDN -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+<!-- Select2 -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+
 
 <style>
     .mensaje {
@@ -75,17 +83,14 @@
         background-color: #FC7D05 !important; /* Cambia esto al color verde que desees */
         color: white !important; /* Cambia esto al color de texto deseado para las filas verdes */
     }
+    .sidebar {
+        width: 250px;
+        transition: width 0.3s ease;
+    }
+
+    .sidebar.collapsed {
+        width: 60px; /* o lo que desees */
+        overflow: hidden;
+    }
 </style>
 
-<!-- Librerías CSS del sidebar -->
-<link rel='stylesheet' href='css/remixicon.css'>
-<link rel='stylesheet' href='css/css-pro-layout.css'>
-<link rel='stylesheet' href='css/fonts_googleapis.css'>
-<link rel="stylesheet" href="css/style_sidebar.css">
-
-
-<!-- Para iconos -->
-<link href="css/all.min.css" rel="stylesheet">
-
-<!-- Noty -->
-<script src="js/noty.min.js"></script>

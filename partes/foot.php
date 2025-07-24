@@ -1,4 +1,26 @@
-<script src="js/jquery-3.6.0.min.js"></script>
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<!-- DataTables Core -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+
+<!-- DataTables Buttons -->
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+
+<!-- Exportar a Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+
+<!-- Exportar a PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
+<!-- Botón Imprimir -->
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+
+<!-- Otros scripts de tu sistema -->
 <script src="js/jquery-migrate-3.3.2.min.js"></script>
 <script src="js/mmenu.min.js"></script>
 <script src="js/tippy.all.min.js"></script>
@@ -12,24 +34,15 @@
 <script src="js/slick.min.js"></script>
 <script src="js/custom.js"></script>
 
-<!-- Plugins JS start-->
-<script src="js/datatable/datatables/jquery.dataTables.min.js"></script>
-<script src="js/datatable/datatables/datatable.custom.js"></script>
-
-<!-- JS de sidebar-->
+<!-- Sidebar -->
 <script src='js/popper.min.js'></script>
 <script src="js/script_sidebar.js"></script>
 
-<!-- Js de sweet alert -->
-<script src="js/sweetalert2@10.js"></script>
+<!-- SweetAlert -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+<!-- JS -->
+<script src="js/noty.min.js"></script>
 
-<!-- Agregar DataTables Buttons y dependencias -->
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/1.7.1/css/buttons.dataTables.min.css">
-<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/buttons/1.7.1/js/dataTables.buttons.min.js"></script>
-<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/buttons/1.7.1/js/buttons.flash.min.js"></script>
-<script type="text/javascript" charset="utf8" src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
-<script type="text/javascript" charset="utf8" src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
-<script type="text/javascript" charset="utf8" src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
-<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/buttons/1.7.1/js/buttons.html5.min.js"></script>
-<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/buttons/1.7.1/js/buttons.print.min.js"></script>
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>

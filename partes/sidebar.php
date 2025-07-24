@@ -1,13 +1,18 @@
-<aside id="sidebar" class="sidebar break-point-sm has-bg-image" style="display: none;">
+<aside id="sidebar" class="sidebar break-point-sm has-bg-image">
   <div class="sidebar-layout">
     <div class="sidebar-header">
       <div class="pro-sidebar-logo">
-        <div>R</div>
-        <p id = "titulo_sidebar">Reportes<p>
+        <button id="btn-collapse" class="btn btn-primary" style="margin: 10px;">
+          ☰
+        </button>
+        <p id = "titulo_sidebar">Reportes<p>        
+
       </div>
     </div>
     <div class="sidebar-content">
       <nav class="menu open-current-submenu">
+
+
         <ul>
           <!--
           <li class="menu-item">

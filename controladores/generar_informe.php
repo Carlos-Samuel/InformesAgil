@@ -52,7 +52,6 @@
                 AND ve.vtafec >= '".$fechaInicio."'  
                 AND ve.vtafec <= '".$fechaFin."' 
             ;";
-            #vdet.proid = 1016
 
             
         $quer = $con->query($consultaBusqueda1);
