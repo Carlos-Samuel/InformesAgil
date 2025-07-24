@@ -236,8 +236,10 @@
                                 }
                             }
 
+                            // INICIO DEL ERROR
+
                             // Inserta nuevas filas
-                            for (let i = 0; i < info.length; i++) {
+                            for (let i = info.length - 1; i >= 0; i--) {
                                 const row = doc.createElement('row');
                                 row.setAttribute('r', i + 1);
 
@@ -247,7 +249,7 @@
 
                                 const is = doc.createElement('is');
                                 const t = doc.createElement('t');
-                                t.textContent = info[i];
+                                t.textContent = info[i] || '';
 
                                 is.appendChild(t);
                                 cell.appendChild(is);
@@ -255,6 +257,9 @@
 
                                 sheetData.insertBefore(row, sheetData.firstChild);
                             }
+
+
+                            // FIN DEL ERROR
 
                             // Ajusta la dimensión de la hoja
                             const dimension = sheet.getElementsByTagName('dimension')[0];
