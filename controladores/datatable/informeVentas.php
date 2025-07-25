@@ -14,35 +14,37 @@ if (!$fechaInicio || !$fechaFin) {
     exit;
 }
 
-$vendedor = $_POST['vendedor'] ?? null;
-$grupo = $_POST['grupo'] ?? null;
-$subgrupo = $_POST['subgrupo'] ?? null;
+// Obtener filtros como arrays
+$vendedor = $_POST['vendedor'] ?? [];
+$empresa = $_POST['empresa'] ?? [];
+$grupo = $_POST['grupo'] ?? [];
+$subgrupo = $_POST['subgrupo'] ?? [];
 
 $con = Connection::getInstance()->getConnection();
 
-// Construcción del WHERE dinámico
 $where = "WHERE ve.vtafec BETWEEN ? AND ?";
 $params = [$fechaInicio, $fechaFin];
 $types = "ss";
 
-if ($vendedor) {
-    $where .= " AND ven.venid = ?";
-    $params[] = $vendedor;
-    $types .= "s";
-}
-if ($grupo) {
-    $where .= " AND prod.grpid = ?";
-    $params[] = $grupo;
-    $types .= "s";
-}
-if ($subgrupo) {
-    $where .= " AND prod.subid = ?";
-    $params[] = $subgrupo;
-    $types .= "s";
+// Función para manejar filtros múltiples
+function agregarFiltroMultiple(&$where, &$params, &$types, $nombreColumna, $valores) {
+    if (is_array($valores) && count($valores) > 0) {
+        $placeholders = implode(',', array_fill(0, count($valores), '?'));
+        $where .= " AND $nombreColumna IN ($placeholders)";
+        foreach ($valores as $valor) {
+            $params[] = $valor;
+            $types .= 's';
+        }
+    }
 }
 
-// Consulta principal
-$query = $con->prepare(
+// Aplicar filtros
+agregarFiltroMultiple($where, $params, $types, 'ven.venid', $vendedor);
+agregarFiltroMultiple($where, $params, $types, 'ven.empid', $empresa);
+agregarFiltroMultiple($where, $params, $types, 'prod.grpid', $grupo);
+agregarFiltroMultiple($where, $params, $types, 'prod.subid', $subgrupo);
+
+$sql = 
     "SELECT 
         ve.vtafec AS fecha_factura,
         pre.prfcod AS prefijo,
@@ -73,8 +75,11 @@ $query = $con->prepare(
     LEFT JOIN inmarca AS mar ON prod.marid = mar.marid
     LEFT JOIN centrocosto AS cc ON ve.ctoid = cc.ctoid
     $where
-    ORDER BY ve.vtafec, ve.vtahor
-");
+    ORDER BY ve.vtafec, ve.vtahor";
+
+//echo $sql;
+
+$query = $con->prepare($sql);
 
 $query->bind_param($types, ...$params);
 $query->execute();

@@ -200,10 +200,14 @@ try{
   document.getElementById("btn-collapse").addEventListener("click", () => {
     SIDEBAR_EL.classList.toggle("collapsed");
     PoppersInstance.closePoppers();
-    if (SIDEBAR_EL.classList.contains("collapsed"))
-    FIRST_SUB_MENUS_BTN.forEach(element => {
-      element.parentElement.classList.remove("open");
-    });
+    if (SIDEBAR_EL.classList.contains("collapsed")) {
+      FIRST_SUB_MENUS_BTN.forEach(element => {
+        element.parentElement.classList.remove("open");
+      });
+      document.getElementById("footer-sidebar").style.display = "none";
+    } else {
+      document.getElementById("footer-sidebar").style.display = "block";
+    }
     updatePoppersTimeout();
   });
 }catch(error){

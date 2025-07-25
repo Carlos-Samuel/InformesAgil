@@ -2,7 +2,7 @@
   <div class="sidebar-layout">
     <div class="sidebar-header">
       <div class="pro-sidebar-logo">
-        <button id="btn-collapse" class="btn btn-primary" style="margin: 10px;">
+        <button id="btn-collapse" class="btn btn-primary" style="margin: -0px;">
           ☰
         </button>
         <p id = "titulo_sidebar">Reportes<p>        
@@ -34,7 +34,7 @@
           </li>
           <hr>
           <div class = "container" style = "text-align: center;">
-            <small>CS Software©, todos los derechos reservados.</small>
+            <small>CS Software©<div id="footer-sidebar">todos los derechos reservados.</div></small>
           </div>
         </ul>
       </nav>

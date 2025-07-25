@@ -5,16 +5,39 @@ require_once realpath(__DIR__ . '/../../vendor/autoload.php');
 header('Content-Type: application/json');
 
 try {
-    if (!isset($_POST['grupo_id'])) {
-        throw new Exception("Falta el parámetro 'grupo_id'");
+    if (!isset($_POST['grupo_id']) || !is_array($_POST['grupo_id'])) {
+        throw new Exception("Falta el parámetro 'subgrupo_id' o no es un arreglo válido");
     }
 
-    $grupoId = intval($_POST['grupo_id']);
+    $grupoIds = array_map('intval', $_POST['grupo_id']);
+    $search = $_POST['search'] ?? '';
+
+    if (empty($grupoIds)) {
+        echo json_encode([]);
+        exit;
+    }
+
+    $placeholders = implode(',', array_fill(0, count($grupoIds), '?'));
 
     $con = Connection::getInstance()->getConnection();
 
-    $stmt = $con->prepare("SELECT subid AS id, subnom AS nombre FROM insubgrupo WHERE grpid = ? ORDER BY nombre");
-    $stmt->bind_param("i", $grupoId);
+    $query = "
+        SELECT 
+            sg.subid AS id, 
+            sg.subnom AS text,
+            te.emprcod AS codigo
+        FROM insubgrupo sg
+        LEFT JOIN tbl_empresa te ON te.emprid = sg.empid
+        WHERE grpid IN ($placeholders) AND subnom LIKE CONCAT('%', ?, '%')
+        ORDER BY subnom
+    ";
+
+    $stmt = $con->prepare($query);
+
+    $types = str_repeat('i', count($grupoIds)) . 's';
+    $params = [...$grupoIds, $search];
+
+    $stmt->bind_param($types, ...$params);
     $stmt->execute();
 
     $result = $stmt->get_result();
