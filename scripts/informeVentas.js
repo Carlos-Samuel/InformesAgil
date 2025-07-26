@@ -130,6 +130,10 @@ function cargarTabla(datosFiltro) {
 
     $('#tablaInforme').DataTable({
         scrollX: true,
+        scrollY: '60vh',
+        scrollCollapse: true,
+        scrollX: true,
+        fixedHeader: true,
         dom: '<"row align-items-center mb-2"' +
                 '<"col-sm-4"l>' +       // Mostrar X registros
                 '<"col-sm-4 text-center"B>' + // Botones de exportar
