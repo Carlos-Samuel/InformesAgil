@@ -338,7 +338,9 @@ $('#formFechas').on('submit', function(e) {
         vendedor: $('#vendedor').val(),
         grupo: $('#grupo').val(),
         subgrupo: $('#subgrupo').val(),
-        empresa: $('#empresa').val()
+        empresa: $('#empresa').val(),
+        marca : $('#marca').val(),
+        prefijo: $('#prefijo').val()
     });
 
 });

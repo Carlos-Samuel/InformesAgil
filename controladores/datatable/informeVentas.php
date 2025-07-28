@@ -19,6 +19,8 @@ $vendedor = $_POST['vendedor'] ?? [];
 $empresa = $_POST['empresa'] ?? [];
 $grupo = $_POST['grupo'] ?? [];
 $subgrupo = $_POST['subgrupo'] ?? [];
+$marca = $_POST['marca'] ?? [];
+$prefijo = $_POST['prefijo'] ?? [];
 
 $con = Connection::getInstance()->getConnection();
 
@@ -43,6 +45,8 @@ agregarFiltroMultiple($where, $params, $types, 'ven.venid', $vendedor);
 agregarFiltroMultiple($where, $params, $types, 'ven.empid', $empresa);
 agregarFiltroMultiple($where, $params, $types, 'prod.grpid', $grupo);
 agregarFiltroMultiple($where, $params, $types, 'prod.subid', $subgrupo);
+agregarFiltroMultiple($where, $params, $types, 'mar.marid', $marca);
+agregarFiltroMultiple($where, $params, $types, 'pre.prfid', $prefijo);
 
 $sql = 
     "SELECT 
