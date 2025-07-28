@@ -19,27 +19,35 @@
                 <div class="card p-4 shadow mt-1">
                     <form id="formFechas">
                         <div class="row mb-3">
-                            <div class="col-md-2">
+                            <div class="col-md-3">
                                 <label for="fechaInicio" class="form-label">Fecha inicio</label>
                                 <input type="date" class="form-control" id="fechaInicio" name="fechaInicio" required>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-3">
                                 <label for="fechaFin" class="form-label">Fecha fin</label>
                                 <input type="date" class="form-control" id="fechaFin" name="fechaFin" required>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-3">
                                 <label for="vendedor" class="form-label">Vendedor</label>
                                 <select id="vendedor" name="vendedor[]" multiple></select>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-3">
                                 <label for="empresa" class="form-label">Empresa</label>
                                 <select class="form-select" id="empresa" name="empresa[]" multiple required></select>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-3">
+                                <label for="marca" class="form-label">Marca</label>
+                                <select class="form-select" id="marca" name="marca[]" multiple></select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="prefijo" class="form-label">Prefijo</label>
+                                <select class="form-select" id="prefijo" name="prefijo[]" multiple></select>
+                            </div>
+                            <div class="col-md-3">
                                 <label for="grupo" class="form-label">Grupo</label>
                                 <select class="form-select" id="grupo" name="grupo[]" multiple></select>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-3">
                                 <label for="subgrupo" class="form-label">Subgrupo</label>
                                 <select class="form-select" id="subgrupo" name="subgrupo[]" multiple></select>
                             </div>
@@ -76,8 +84,6 @@
                         </thead>
                     </table>
                 </div>
-                <div id="cargando" class="mt-3 text-info" style="display: none;">Procesando, por favor espere...</div>
-                <div id="resultado" class="mt-3"></div>
             </main>
         </div>
     </div>

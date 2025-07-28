@@ -55,6 +55,62 @@ $('#empresa').select2({
 });
 
 
+// MARCA
+$('#marca').select2({
+    placeholder: 'Seleccione una o mas marcas',
+    width: '100%',
+    multiple: true,
+    ajax: {
+        url: 'controladores/select2/marcas.php',
+        type: 'POST',
+        dataType: 'json',
+        delay: 250,
+        data: function (params) {
+            return {
+                search: params.term || '',
+                empresa_id: $('#empresa').val() || null
+            };
+        },
+        processResults: function (data) {
+            return {
+                results: data.map(item => ({
+                    id: item.id,
+                    text: `${item.codigo} - ${item.text}`
+                }))
+            };
+        },
+        cache: true
+    }
+});
+
+// PREFIJOS
+$('#prefijo').select2({
+    placeholder: 'Seleccione uno o mas prefijos',
+    width: '100%',
+    multiple: true,
+    ajax: {
+        url: 'controladores/select2/prefijos.php',
+        type: 'POST',
+        dataType: 'json',
+        delay: 250,
+        data: function (params) {
+            return {
+                search: params.term || '',
+                empresa_id: $('#empresa').val() || null
+            };
+        },
+        processResults: function (data) {
+            return {
+                results: data.map(item => ({
+                    id: item.id,
+                    text: `${item.codigo} - ${item.text}`
+                }))
+            };
+        },
+        cache: true
+    }
+});
+
 // GRUPO
 $('#grupo').select2({
     placeholder: 'Seleccione uno o mas grupos',
@@ -195,6 +251,8 @@ function cargarTabla(datosFiltro) {
                         `Fecha Final: ${$('#fechaFin').val() || ''}`,
                         `Vendedor(es): ${getMultipleTexts('#vendedor')}`,
                         `Empresa(s): ${getMultipleTexts('#empresa')}`,
+                        `Marca(s): ${getMultipleTexts('#marca')}`,
+                        `Prefijos(s): ${getMultipleTexts('#prefijo')}`,
                         `Grupo(s): ${getMultipleTexts('#grupo')}`,
                         `Subgrupo(s): ${getMultipleTexts('#subgrupo')}`
                     ];
@@ -217,8 +275,6 @@ function cargarTabla(datosFiltro) {
                         }
                     }
 
-                    // INICIO DEL ERROR
-
                     // Inserta nuevas filas
                     for (let i = info.length - 1; i >= 0; i--) {
                         const row = doc.createElement('row');
@@ -238,8 +294,6 @@ function cargarTabla(datosFiltro) {
 
                         sheetData.insertBefore(row, sheetData.firstChild);
                     }
-
-                    // FIN DEL ERROR
 
                     // Ajusta la dimensión de la hoja
                     const dimension = sheet.getElementsByTagName('dimension')[0];

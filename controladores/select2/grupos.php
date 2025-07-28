@@ -30,7 +30,6 @@ try {
         LEFT JOIN tbl_empresa te ON te.emprid = g.empid
         WHERE empid IN ($placeholders) AND grpnom LIKE CONCAT('%', ?, '%')
         ORDER BY grpnom
-        LIMIT 20
     ";
 
     $stmt = $con->prepare($query);
