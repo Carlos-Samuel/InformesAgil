@@ -476,6 +476,38 @@ function obtenerLayout() {
     });
 }
 
+function ocultarGrafico(graficoId) {
+    const item = document.getElementById('item-' + graficoId);
+    if (item) {
+        item.style.display = 'none';
+        graficosOcultos.add(graficoId);
+        actualizarPanelOcultos();
+        guardarLayoutActual();
+    }
+}
+
+function restaurarGrafico(graficoId) {
+    const item = document.getElementById('item-' + graficoId);
+    if (item) {
+        item.style.display = '';
+        graficosOcultos.delete(graficoId);
+        actualizarPanelOcultos();
+        guardarLayoutActual();
+    }
+}
+
+function manejarClickEnBotonGrafico(e) {
+    if (e.target.classList.contains('btn-ocultar-grafico')) {
+        const graficoId = e.target.dataset.id;
+        ocultarGrafico(graficoId);
+    }
+
+    if (e.target.classList.contains('btn-restaurar-grafico')) {
+        const graficoId = e.target.dataset.id;
+        restaurarGrafico(graficoId);
+    }
+}
+
 $(document).ready(function () {
     $('#btnReiniciarLayout').click(reestablecerLayout);
 
@@ -484,27 +516,7 @@ $(document).ready(function () {
     obtenerLayout();
 
     document.addEventListener('click', function (e) {
-        if (e.target.classList.contains('btn-ocultar-grafico')) {
-            const graficoId = e.target.dataset.id;
-            const item = document.getElementById('item-' + graficoId);
-            if (item) {
-                item.style.display = 'none';
-                graficosOcultos.add(graficoId);
-                actualizarPanelOcultos();
-                guardarLayoutActual();
-            }
-        }
-
-        if (e.target.classList.contains('btn-restaurar-grafico')) {
-            const graficoId = e.target.dataset.id;
-            const item = document.getElementById('item-' + graficoId);
-            if (item) {
-                item.style.display = '';
-                graficosOcultos.delete(graficoId);
-                actualizarPanelOcultos();
-                guardarLayoutActual();
-            }
-        }
+        manejarClickEnBotonGrafico(e);
     });
-    
+
 });

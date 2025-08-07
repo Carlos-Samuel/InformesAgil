@@ -1,0 +1,6 @@
+POR HACER:
+
+    *Que cuando se oculte un grafico en vez de dejar espacio vacio suban los otros graficos
+    *Agregar boton de exportar archivo csv y exportar grafico
+    *Agregar en algunos graficos los limites de fechas
+
