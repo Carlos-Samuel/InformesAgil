@@ -49,7 +49,7 @@
                             </div>
                         </div>
 
-                        <div class="grid-stack-item" gs-w="12" gs-h="5" gs-x="0" gs-y="6" id="item-graficoComparativoIngresoCostoUtilidad">
+                        <div class="grid-stack-item" gs-w="12" gs-h="5" gs-x="0" gs-y="9" id="item-graficoComparativoIngresoCostoUtilidad">
                             <div class="grid-stack-item-content">
                                 <button class="btn btn-sm btn-danger btn-ocultar-grafico" data-id="graficoComparativoIngresoCostoUtilidad" style="position: absolute; top: 5px; right: 5px; z-index: 10;">×</button>
                                 <div id="graficoComparativoIngresoCostoUtilidadContainer">
