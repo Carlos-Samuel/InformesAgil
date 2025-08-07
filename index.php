@@ -5,6 +5,7 @@
             include('partes/head.php')
         ?>
         <link rel="stylesheet" href="styles/dashboard.css">
+        
     </head>
     <body>
         <div class="layout has-sidebar fixed-sidebar fixed-header">
@@ -24,8 +25,8 @@
                     <div class="grid-stack">
                         <div class="grid-stack-item" gs-w="6" gs-h="4" gs-x="0" gs-y="0" id="item-graficoComparativoVentasMesAnio">
                             <div class="grid-stack-item-content">
-                                <button class="btn btn-sm btn-danger btn-ocultar-grafico" data-id="graficoComparativoVentasMesAnio" style="position: absolute; top: 5px; right: 5px; z-index: 10;">×</button>
-                                <div id = "graficoComparativoVentasMesAnioContainer">
+                                <button class="btn btn-sm btn-danger btn-ocultar-grafico" data-id="graficoComparativoVentasMesAnio">×</button>
+                                <div class ="chartContainer">
                                     <canvas id="graficoComparativoVentasMesAnio"></canvas>
                                 </div>
                             </div>
@@ -33,8 +34,8 @@
 
                         <div class="grid-stack-item" gs-w="6" gs-h="4" gs-x="6" gs-y="0" id="item-graficoComparativoVentasAnio">
                             <div class="grid-stack-item-content">
-                                <button class="btn btn-sm btn-danger btn-ocultar-grafico" data-id="graficoComparativoVentasAnio" style="position: absolute; top: 5px; right: 5px; z-index: 10;">×</button>
-                                <div id = "graficoComparativoVentasAnioContainer">
+                                <button class="btn btn-sm btn-danger btn-ocultar-grafico" data-id="graficoComparativoVentasAnio">×</button>
+                                <div class ="chartContainer">
                                     <canvas id="graficoComparativoVentasAnio"></canvas>
                                 </div>
                             </div>
@@ -42,8 +43,8 @@
 
                         <div class="grid-stack-item" gs-w="12" gs-h="5" gs-x="0" gs-y="4" id="item-graficoComparativoVentasMesPrefijo">
                             <div class="grid-stack-item-content">
-                                <button class="btn btn-sm btn-danger btn-ocultar-grafico" data-id="graficoComparativoVentasMesPrefijo" style="position: absolute; top: 5px; right: 5px; z-index: 10;">×</button>
-                                <div id = "graficoComparativoVentasMesPrefijoContainer">
+                                <button class="btn btn-sm btn-danger btn-ocultar-grafico" data-id="graficoComparativoVentasMesPrefijo">×</button>
+                                <div class ="chartContainer">
                                     <canvas id="graficoComparativoVentasMesPrefijo"></canvas>
                                 </div>
                             </div>
@@ -51,8 +52,8 @@
 
                         <div class="grid-stack-item" gs-w="12" gs-h="5" gs-x="0" gs-y="9" id="item-graficoComparativoIngresoCostoUtilidad">
                             <div class="grid-stack-item-content">
-                                <button class="btn btn-sm btn-danger btn-ocultar-grafico" data-id="graficoComparativoIngresoCostoUtilidad" style="position: absolute; top: 5px; right: 5px; z-index: 10;">×</button>
-                                <div id="graficoComparativoIngresoCostoUtilidadContainer">
+                                <button class="btn btn-sm btn-danger btn-ocultar-grafico" data-id="graficoComparativoIngresoCostoUtilidad">×</button>
+                                <div class ="chartContainer">
                                     <canvas id="graficoComparativoIngresoCostoUtilidad"></canvas>
                                 </div>
                             </div>
@@ -84,20 +85,6 @@
             </div>
         </div>
 
-
-        <!-- CSS Gridstack -->
-        <link href="https://cdn.jsdelivr.net/npm/gridstack@9.2.2/dist/gridstack.min.css" rel="stylesheet" />
-
-        <!-- JS Gridstack y lodash -->
-        <script src="https://cdn.jsdelivr.net/npm/lodash@4/lodash.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/gridstack@9.2.2/dist/gridstack-all.min.js"></script>
-
-        <!-- Incluye Chart.js -->
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script src="scripts/dashboard.js"></script>
-
-        <!-- Modales -->
-         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-        
     </body>
 </html>

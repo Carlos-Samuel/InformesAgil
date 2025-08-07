@@ -3,7 +3,8 @@ let grid;
 const colorPalettes = {
     1: 0,
     2: 0,
-    3: 0
+    3: 0,
+    4: 0
 };
 
 const graficosOcultos = new Set();
@@ -12,7 +13,7 @@ const graficosConfig = [
     {
         idCanvas: 'graficoComparativoVentasMesAnio',
         tipo: 'line',
-        url: 'controladores/graficos/comparativoVentasMesAnio.php',
+        url: 'comparativoVentasMesAnio.php',
         procesarDatos: function (response) {
             const data = response.data;
             const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -32,7 +33,7 @@ const graficosConfig = [
                 labels: meses,
                 datasets: datasets,
                 options: {
-                    title: 'Ventas por Mes - Últimos 3 Años',
+                    title: 'Ventas por Mes - Últimos 4 Años',
                     ejeX: 'Mes',
                     ejeY: 'Total Ventas'
                 }
@@ -42,7 +43,7 @@ const graficosConfig = [
     {
         idCanvas: 'graficoComparativoVentasAnio',
         tipo: 'bar',
-        url: 'controladores/graficos/comparativoVentasAnio.php',
+        url: 'comparativoVentasAnio.php',
         procesarDatos: function (response) {
             const data = response.data;
             const labels = Object.keys(data);
@@ -67,7 +68,7 @@ const graficosConfig = [
     {
         idCanvas: 'graficoComparativoVentasMesPrefijo',
         tipo: 'bar',
-        url: 'controladores/graficos/comparativoVentasMesPrefijo.php',
+        url: 'comparativoVentasMesPrefijo.php',
         procesarDatos: function (response) {
             const rawData = response.data;
             const allMeses = new Set();
@@ -108,7 +109,7 @@ const graficosConfig = [
     {
         idCanvas: 'graficoComparativoIngresoCostoUtilidad',
         tipo: 'bar',
-        url: 'controladores/graficos/comparativoVentasIngresoCosto.php',
+        url: 'comparativoVentasIngresoCosto.php',
         procesarDatos: function (response) {
             const data = response.data;
             const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -226,7 +227,7 @@ function cargarGraficosDesdeConfig(config) {
     const canvas = document.getElementById(config.idCanvas);
 
     $.ajax({
-        url: config.url,
+        url: 'controladores/graficos/' + config.url,
         type: 'POST',
         dataType: 'json',
         success: function (response) {
@@ -434,34 +435,28 @@ function iniciarDashboard(layoutGuardado) {
 
 }
 
-$(document).ready(function () {
-    $('#btnReiniciarLayout').click(function () {
-        if (confirm('¿Estás seguro de que deseas reestablecer el layout? Esta acción eliminará tu configuración personalizada.')) {
-            $.ajax({
-                url: 'controladores/reiniciarLayout.php',
-                type: 'POST',
-                dataType: 'json',
-                success: function (data) {
-                    if (data.success) {
-                        location.reload();
-                    } else {
-                        alert('No se pudo reestablecer el layout: ' + data.error);
-                    }
-                },
-                error: function (xhr, status, error) {
-                    console.error('Error al reestablecer:', error);
-                    alert('Ocurrió un error inesperado.');
+function reestablecerLayout() {
+    if (confirm('¿Estás seguro de que deseas reestablecer el layout? Esta acción eliminará tu configuración personalizada.')) {
+        $.ajax({
+            url: 'controladores/reiniciarLayout.php',
+            type: 'POST',
+            dataType: 'json',
+            success: function (data) {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('No se pudo reestablecer el layout: ' + data.error);
                 }
-            });
-        }
-    });
+            },
+            error: function (xhr, status, error) {
+                console.error('Error al reestablecer:', error);
+                alert('Ocurrió un error inesperado.');
+            }
+        });
+    }
+}
 
-    
-    $(document).ready(function () {
-        graficosConfig.forEach(cargarGraficosDesdeConfig);
-    });
-
-    
+function obtenerLayout() {
     $.ajax({
         url: 'controladores/obtenerLayout.php',
         type: 'GET',
@@ -479,7 +474,14 @@ $(document).ready(function () {
             iniciarDashboard({}); // continuar sin layout
         }
     });
+}
 
+$(document).ready(function () {
+    $('#btnReiniciarLayout').click(reestablecerLayout);
+
+    graficosConfig.forEach(cargarGraficosDesdeConfig);
+    
+    obtenerLayout();
 
     document.addEventListener('click', function (e) {
         if (e.target.classList.contains('btn-ocultar-grafico')) {

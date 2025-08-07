@@ -27,70 +27,14 @@
 <!-- Select2 -->
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
+<!-- CSS de FixedHeader -->
+<link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
 
+<!-- CSS Gridstack -->
+<link href="https://cdn.jsdelivr.net/npm/gridstack@9.2.2/dist/gridstack.min.css" rel="stylesheet" />
 
-<style>
-    .mensaje {
-        position: relative;
-        background-color: #c3e3fc;
-        padding: 20px;
-        border: 1px solid #369;
-        text-align: center;
-        font-size: 18px;
-        color: #333;
-    }
+<!-- DataTables Core -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
 
-    .cerrar {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        font-size: 20px;
-        background: transparent;
-        border: none;
-        cursor: pointer;
-    }
-
-    .noty_body {
-        font-size: 16px !important;
-        padding: 15px !important; 
-    }
-
-    .noty_body .noty_text {
-        font-size: 18px !important;
-    }
-
-    .alistamiento-completo {
-        background-color: lightgreen !important;
-    }
-
-    .alistamiento-incompleto {
-        background-color: lightyellow !important;
-    }
-
-    .verificacion-completo {
-        background-color: lightgreen !important;
-    }
-
-    .verificacion-incorrecto {
-        background-color: lightgoldenrodyellow !important;
-    }
-
-    .fila-amarilla {
-        background-color: #FCE605 !important;
-    }
-
-    .fila-verde {
-        background-color: #FC7D05 !important; /* Cambia esto al color verde que desees */
-        color: white !important; /* Cambia esto al color de texto deseado para las filas verdes */
-    }
-    .sidebar {
-        width: 250px;
-        transition: width 0.3s ease;
-    }
-
-    .sidebar.collapsed {
-        width: 60px; /* o lo que desees */
-        overflow: hidden;
-    }
-</style>
-
+<!-- DataTables Buttons -->
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css">
