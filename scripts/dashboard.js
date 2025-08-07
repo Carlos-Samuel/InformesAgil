@@ -1,3 +1,13 @@
+let grid;
+
+const colorPalettes = {
+    1: 0,
+    2: 0,
+    3: 0
+};
+
+const graficosOcultos = new Set();
+
 const graficosConfig = [
     {
         idCanvas: 'graficoComparativoVentasMesAnio',
@@ -53,17 +63,107 @@ const graficosConfig = [
                 }
             };
         }
+    },
+    {
+        idCanvas: 'graficoComparativoVentasMesPrefijo',
+        tipo: 'bar',
+        url: 'controladores/graficos/comparativoVentasMesPrefijo.php',
+        procesarDatos: function (response) {
+            const rawData = response.data;
+            const allMeses = new Set();
+
+            // Recolectar todos los meses presentes
+            Object.values(rawData).forEach(prefijoData => {
+                Object.keys(prefijoData).forEach(mes => {
+                    allMeses.add(parseInt(mes));
+                });
+            });
+
+            const mesesOrdenados = Array.from(allMeses).sort((a, b) => a - b);
+            const labels = mesesOrdenados.map(m => ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"][m - 1]);
+
+            const datasets = [];
+
+            Object.keys(rawData).forEach(prefijo => {
+                const ventas = mesesOrdenados.map(mes => rawData[prefijo][mes] || 0);
+                datasets.push({
+                    label: prefijo,
+                    data: ventas,
+                    backgroundColor: getColor(3)
+                });
+            });
+
+            return {
+                labels: labels,
+                datasets: datasets,
+                options: {
+                    title: 'Comparativo de Ventas Mensuales por Prefijo (Año Actual)',
+                    ejeX: 'Mes',
+                    ejeY: 'Total Ventas'
+                }
+            };
+        }
+
+    },
+    {
+        idCanvas: 'graficoComparativoIngresoCostoUtilidad',
+        tipo: 'bar',
+        url: 'controladores/graficos/comparativoVentasIngresoCosto.php',
+        procesarDatos: function (response) {
+            const data = response.data;
+            const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+            const labels = Object.keys(data)
+                .map(m => parseInt(m))
+                .sort((a, b) => a - b)
+                .map(m => meses[m - 1]);
+
+            const ingreso = [];
+            const costo = [];
+            const utilidad = [];
+
+            Object.keys(data).sort((a, b) => a - b).forEach(mes => {
+                ingreso.push(data[mes].ingreso);
+                costo.push(data[mes].costo);
+                utilidad.push(data[mes].utilidad);
+            });
+
+            return {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Ingreso',
+                        data: ingreso,
+                        backgroundColor: '#3498db',
+                        type: 'bar'
+                    },
+                    {
+                        label: 'Costo',
+                        data: costo,
+                        backgroundColor: '#2ecc71',
+                        type: 'bar'
+                    },
+                    {
+                        label: 'Utilidad',
+                        data: utilidad,
+                        borderColor: '#e67e22',
+                        backgroundColor: 'transparent',
+                        borderWidth: 3,
+                        type: 'line',
+                        tension: 0.3,
+                    }
+                ],
+                options: {
+                    title: 'Utilidad en Ventas Bruta: Ingreso vs Costo',
+                    ejeX: 'Mes',
+                    ejeY: 'Valores COP'
+                }
+            };
+        }
     }
+
+
 ];
-
-let grid;
-
-const colorPalettes = {
-    1: 0,
-    2: 0
-};
-
-const graficosOcultos = new Set();
 
 const definedColors = [
     '#3366CC', // Azul fuerte
@@ -105,7 +205,7 @@ function formatearNumeroEje(value) {
 
 function calcularTamanioFuente(canvas) {
     const alto = canvas.clientHeight;
-    return Math.max(10, Math.round(alto / 20));
+    return Math.max(10, Math.round(alto / 30));
 }
 
 function aplicarFuenteDinamica(chart, canvas, base = 0) {

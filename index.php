@@ -4,7 +4,7 @@
         <?php
             include('partes/head.php')
         ?>
-        <style src = "styles/dashboard.css"></style>
+        <link rel="stylesheet" href="styles/dashboard.css">
     </head>
     <body>
         <div class="layout has-sidebar fixed-sidebar fixed-header">
@@ -25,7 +25,7 @@
                         <div class="grid-stack-item" gs-w="6" gs-h="4" gs-x="0" gs-y="0" id="item-graficoComparativoVentasMesAnio">
                             <div class="grid-stack-item-content">
                                 <button class="btn btn-sm btn-danger btn-ocultar-grafico" data-id="graficoComparativoVentasMesAnio" style="position: absolute; top: 5px; right: 5px; z-index: 10;">×</button>
-                                <div style="position: relative; width: 100%; height: 100%;">
+                                <div id = "graficoComparativoVentasMesAnioContainer">
                                     <canvas id="graficoComparativoVentasMesAnio"></canvas>
                                 </div>
                             </div>
@@ -34,11 +34,30 @@
                         <div class="grid-stack-item" gs-w="6" gs-h="4" gs-x="6" gs-y="0" id="item-graficoComparativoVentasAnio">
                             <div class="grid-stack-item-content">
                                 <button class="btn btn-sm btn-danger btn-ocultar-grafico" data-id="graficoComparativoVentasAnio" style="position: absolute; top: 5px; right: 5px; z-index: 10;">×</button>
-                                <div style="position: relative; width: 100%; height: 100%;">
+                                <div id = "graficoComparativoVentasAnioContainer">
                                     <canvas id="graficoComparativoVentasAnio"></canvas>
                                 </div>
                             </div>
                         </div>
+
+                        <div class="grid-stack-item" gs-w="12" gs-h="5" gs-x="0" gs-y="4" id="item-graficoComparativoVentasMesPrefijo">
+                            <div class="grid-stack-item-content">
+                                <button class="btn btn-sm btn-danger btn-ocultar-grafico" data-id="graficoComparativoVentasMesPrefijo" style="position: absolute; top: 5px; right: 5px; z-index: 10;">×</button>
+                                <div id = "graficoComparativoVentasMesPrefijoContainer">
+                                    <canvas id="graficoComparativoVentasMesPrefijo"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid-stack-item" gs-w="12" gs-h="5" gs-x="0" gs-y="6" id="item-graficoComparativoIngresoCostoUtilidad">
+                            <div class="grid-stack-item-content">
+                                <button class="btn btn-sm btn-danger btn-ocultar-grafico" data-id="graficoComparativoIngresoCostoUtilidad" style="position: absolute; top: 5px; right: 5px; z-index: 10;">×</button>
+                                <div id="graficoComparativoIngresoCostoUtilidadContainer">
+                                    <canvas id="graficoComparativoIngresoCostoUtilidad"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
 
                 </main>
