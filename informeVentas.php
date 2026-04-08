@@ -13,7 +13,7 @@
         </div>
         <div class="layout">
             <div class="banner-titulo">
-                Informe por Rango de Fechas
+                Informe de Ventas
             </div>
             <main class="content">
                 <div class="card p-4 shadow mt-1">

@@ -5,7 +5,7 @@
         <button id="btn-collapse" class="btn btn-primary" style="margin: -0px;">
           ☰
         </button>
-        <p id = "titulo_sidebar">Reportes<p>        
+        <p id = "titulo_sidebar">Informes<p>        
 
       </div>
     </div>
@@ -14,22 +14,20 @@
 
 
         <ul>
-          <!--
-          <li class="menu-item">
-            <a href="index.php">
-              <span class="menu-icon">
-                <i class="fa fa-bookmark"></i>
-              </span>
-              <span class="menu-title">Kardex producto Thinner</span>
-            </a>
-          </li>
-          -->
           <li class="menu-item">
             <a href="informeVentas.php">
               <span class="menu-icon">
                 <i class="fa fa-bookmark"></i>
               </span>
-              <span class="menu-title">Informe Ventas</span>
+              <span class="menu-title">Ventas</span>
+            </a>
+          </li>
+          <li class="menu-item">
+            <a href="informeVentasProductoConsolidado.php">
+              <span class="menu-icon">
+                <i class="fa fa-bookmark"></i>
+              </span>
+              <span class="menu-title">V. Consolidado</span>
             </a>
           </li>
           <hr>

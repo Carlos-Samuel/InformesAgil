@@ -226,7 +226,7 @@ function cargarTabla(datosFiltro) {
             { data: 'centro_costos' }
         ],
         language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
+            url: 'js/datatable/es-ES.json'
         },
         buttons: [
             {
