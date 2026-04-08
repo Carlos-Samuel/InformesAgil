@@ -1,0 +1,13 @@
+.chartContainer
+ {
+    position: relative; 
+    width: 100%; 
+    height: 100%;
+}
+
+.btn-ocultar-grafico{
+    position: absolute; 
+    top: 5px; 
+    right: 5px; 
+    z-index: 10;
+}

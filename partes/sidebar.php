@@ -11,8 +11,6 @@
     </div>
     <div class="sidebar-content">
       <nav class="menu open-current-submenu">
-
-
         <ul>
           <li class="menu-item">
             <a href="informeVentas.php">
