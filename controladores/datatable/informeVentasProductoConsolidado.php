@@ -92,6 +92,7 @@ $sql = "
             km.proid,
             SUM(
                 CASE
+                    WHEN tmi.tmiid IS NULL THEN -km.karcan
                     WHEN tmi.TmiTipo = '+' THEN km.karcan
                     WHEN tmi.TmiTipo = '-' THEN -km.karcan
                     ELSE 0
