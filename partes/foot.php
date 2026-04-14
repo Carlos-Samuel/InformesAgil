@@ -1,5 +1,5 @@
 <!-- jQuery -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="js/jquery-3.6.0.min.js"></script>
 
 <!-- DataTables Core -->
 <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
