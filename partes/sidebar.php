@@ -29,6 +29,23 @@
             </a>
           </li>
           <hr>
+          <li class="menu-item">
+            <a href="karmovi.php">
+              <span class="menu-icon">
+                <i class="fa fa-boxes-stacking"></i>
+              </span>
+              <span class="menu-title">Kardex Mov.</span>
+            </a>
+          </li>
+          <li class="menu-item">
+            <a href="tipmovinv.php">
+              <span class="menu-icon">
+                <i class="fa fa-tags"></i>
+              </span>
+              <span class="menu-title">Tipos Mov. Inv.</span>
+            </a>
+          </li>
+          <hr>
           <div class = "container" style = "text-align: center;">
             <small>CS Software©<div id="footer-sidebar">todos los derechos reservados.</div></small>
           </div>
