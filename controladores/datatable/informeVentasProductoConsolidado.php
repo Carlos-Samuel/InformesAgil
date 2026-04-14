@@ -86,7 +86,9 @@ for ($i = 0; $i < $karTotal; $i += $batchSize) {
         if ($fecha === null) continue;
         if (substr((string)$fecha, 0, 10) > $fechaFin) continue;
 
-        $procod  = trim($row['PROCOD']  ?? '');
+        // Normalizar: mayúsculas + sin espacios, para que PHP y MySQL
+        // coincidan aunque el DBF tenga variaciones de casing o padding.
+        $procod  = strtoupper(trim($row['PROCOD'] ?? ''));
         if ($procod === '') continue;
 
         $kartipo = trim($row['KARTIPO'] ?? '');
@@ -132,8 +134,13 @@ if (!empty($existencias)) {
             $val = round($existencias[$p], 4);
             $values[] = "('$esc', $val)";
         }
+        // ON DUPLICATE KEY UPDATE como red de seguridad: si por alguna
+        // codificación dos claves PHP distintas colisionan en MySQL,
+        // acumula en lugar de fallar.
         $con->query(
-            "INSERT INTO tmp_existencias_dbf (procod, existencias) VALUES " . implode(',', $values)
+            "INSERT INTO tmp_existencias_dbf (procod, existencias) VALUES "
+            . implode(',', $values)
+            . " ON DUPLICATE KEY UPDATE existencias = existencias + VALUES(existencias)"
         );
     }
 }
