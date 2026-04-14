@@ -99,7 +99,7 @@ $sql = "
                 END
             ) AS existencias
         FROM karmovi km
-        INNER JOIN tipmovinv tmi ON km.tmiid = tmi.tmiid
+        LEFT JOIN tipmovinv tmi ON km.tmiid = tmi.tmiid
         $whereKarmovi
         GROUP BY km.proid
     ) AS inv ON prod.proid = inv.proid
