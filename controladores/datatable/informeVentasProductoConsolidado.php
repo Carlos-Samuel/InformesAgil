@@ -223,6 +223,8 @@ $result = $query->get_result();
 
 $data = [];
 while ($row = $result->fetch_assoc()) {
+    // Castear a float elimina los ceros innecesarios (ej: "150.0000" → 150, "25.5000" → 25.5)
+    $row['existencias'] = (float)$row['existencias'];
     $data[] = $row;
 }
 
