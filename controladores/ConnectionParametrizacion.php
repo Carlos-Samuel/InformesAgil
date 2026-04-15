@@ -4,10 +4,17 @@
         private $connection;
 
         private function __construct() {
-            $host = "localhost";
-            $username = "atfsasco_atfusr9";
-            $password = "1]qghP4!Zt7z";
-            $database = "informes";
+            $env = [];
+            foreach (file(__DIR__ . '/../.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+                if (str_starts_with(trim($line), '#')) continue;
+                [$key, $value] = explode('=', $line, 2);
+                $env[trim($key)] = trim($value, " \t\n\r\0\x0B'\"");
+            }
+
+            $host     = $env['DB_PARAM_HOST'];
+            $username = $env['DB_PARAM_USERNAME'];
+            $password = $env['DB_PARAM_PASSWORD'];
+            $database = $env['DB_PARAM_DATABASE'];
 
             $this->connection = new mysqli($host, $username, $password, $database);
 
