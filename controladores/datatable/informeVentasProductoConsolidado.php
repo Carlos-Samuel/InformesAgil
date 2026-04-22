@@ -2,6 +2,7 @@
 require_once '../Connection.php';
 require_once '../EnvLoader.php';
 require_once '../DbfReader.php';
+require_once '../TipMovInvLoader.php';
 
 header('Content-Type: application/json');
 
@@ -32,40 +33,29 @@ function agregarFiltroMultiple(&$where, &$params, &$types, $col, $vals) {
 
 /* ============================================================
    PASO 1 — Leer TIPMOVINV desde el DBF
-   Construye un lookup: TMICOD (string, 3 chars) → TMITIPO ('+' o '-')
-   Este archivo tiene ~98 000 registros, se carga completo en memoria.
+   Construye el mapa [TMICOD => signo] usando EXACTAMENTE la misma
+   regla que el informe de Kardex (TipMovInvLoader::loadSignMap):
+     +1 → suma    (TMITIPO = '+')
+     -1 → resta   (TMITIPO = '-')
+      0 → no afecta inventario (TMINOAFECT = true)
    ============================================================ */
+$batchSize     = 2000;
 $pathTipMovInv = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_TIPMOVINV');
 if (!$pathTipMovInv || !file_exists($pathTipMovInv)) {
     echo json_encode(['data' => [], 'error' => 'TIPMOVINV.DBF no encontrado. Verifique el .env. Path buscado: ' . $pathTipMovInv]);
     exit;
 }
 
-$tipReader  = new DbfReader($pathTipMovInv, 'CP1252');
-$tipTotal   = $tipReader->getNumRecords();
-$tipoLookup = []; // ['FAV' => '-', 'COM' => '+', ...]
-
-$batchSize = 2000;
-for ($i = 0; $i < $tipTotal; $i += $batchSize) {
-    foreach ($tipReader->readRecords($i, $batchSize) as $row) {
-        $cod  = trim($row['TMICOD']  ?? '');
-        $tipo = trim($row['TMITIPO'] ?? '');
-        if ($cod !== '') {
-            $tipoLookup[$cod] = $tipo;
-        }
-    }
-}
+$tipoSignos = TipMovInvLoader::loadSignMap($pathTipMovInv, $batchSize);
 
 /* ============================================================
    PASO 2 — Escanear KARMOVI desde el DBF en batches
-   Filtra por KARFECHA <= $fechaFin y acumula existencias por PROCOD.
+   Acumula existencias por PROCOD aplicando el signo obtenido en
+   el PASO 1 (misma regla que el Kardex: respeta TMINOAFECT y
+   asume +1 si KARTIPO no está en TIPMOVINV).
 
    Nota de rendimiento: este archivo tiene ~638 000 registros (~187 MB).
    El escaneo completo tarda entre 5 y 20 segundos según el disco.
-   La lógica replica exactamente la subconsulta original:
-     TMITIPO = '+' → suma cantidad
-     TMITIPO = '-' → resta cantidad
-     TMITIPO null  → resta (igual que el CASE original con tmi.tmiid IS NULL)
    ============================================================ */
 $pathKarmovi = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_KARMOVI');
 if (!$pathKarmovi || !file_exists($pathKarmovi)) {
@@ -81,30 +71,20 @@ for ($i = 0; $i < $karTotal; $i += $batchSize) {
     $rows = $karReader->readRecords($i, min($batchSize, $karTotal - $i));
 
     foreach ($rows as $row) {
-        // Filtrar por fecha (KARFECHA llega como 'YYYY-MM-DD HH:MM:SS' o null)
-        $fecha = $row['KARFECHA'] ?? null;
-        //if ($fecha === null) continue;
-        //if (substr((string)$fecha, 0, 10) > $fechaFin) continue;
-
         // Normalizar: mayúsculas + sin espacios, para que PHP y MySQL
         // coincidan aunque el DBF tenga variaciones de casing o padding.
-        $procod  = strtoupper(trim($row['PROCOD'] ?? ''));
+        $procod = strtoupper(trim($row['PROCOD'] ?? ''));
         if ($procod === '') continue;
 
-        $kartipo = trim($row['KARTIPO'] ?? '');
-        $tipo    = $tipoLookup[$kartipo] ?? null;  // '+', '-', o null
-        $cant    = (float)($row['KARCANT'] ?? 0);
+        $sign = TipMovInvLoader::signFor($tipoSignos, $row);
+        if ($sign === 0) continue;  // movimiento no afecta inventario
+
+        $cant = (float)($row['KARCANT'] ?? 0);
 
         if (!isset($existencias[$procod])) {
             $existencias[$procod] = 0.0;
         }
-
-        if ($tipo === '+') {
-            $existencias[$procod] += $cant;
-        } else {
-            // tipo '-' o tipo null (desconocido) → resta, igual que el CASE original
-            $existencias[$procod] -= $cant;
-        }
+        $existencias[$procod] += $sign * $cant;
     }
 }
 

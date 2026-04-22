@@ -14,6 +14,7 @@
  */
 require_once '../EnvLoader.php';
 require_once '../DbfReader.php';
+require_once '../TipMovInvLoader.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -35,39 +36,14 @@ if ($procod === '') {
 try {
     // ----------------------------------------------------------------
     // 1. Cargar TIPMOVINV y construir mapa de signos
-    //    $tipoSignos[TMICOD] = +1 (suma), -1 (resta) ó 0 (no afecta)
+    //    (regla unificada — ver TipMovInvLoader::loadSignMap)
     // ----------------------------------------------------------------
-    $tipoSignos = [];
-
-    $pathTipo = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_TIPMOVINV');
-    if ($pathTipo && file_exists($pathTipo)) {
-        $readerTipo = new DbfReader($pathTipo, 'CP1252');
-        $totalTipo  = $readerTipo->getNumRecords();
-        $todosTipos = $readerTipo->readRecords(0, $totalTipo);
-
-        foreach ($todosTipos as $t) {
-            $cod       = trim((string)($t['TMICOD']     ?? ''));
-            $tmitipo   = trim((string)($t['TMITIPO']    ?? ''));
-            $noAfecta  = $t['TMINOAFECT'] ?? false; // campo lógico (bool)
-
-            if ($cod === '') continue;
-
-            if ($noAfecta === true) {
-                $tipoSignos[$cod] = 0;  // no afecta inventario
-            } elseif ($tmitipo === '+') {
-                $tipoSignos[$cod] = 1;  // entrada → suma
-            } elseif ($tmitipo === '-') {
-                $tipoSignos[$cod] = -1; // salida → resta
-            } else {
-                $tipoSignos[$cod] = 1;  // desconocido → asumir suma
-            }
-        }
-    }
+    $pathTipo   = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_TIPMOVINV');
+    $tipoSignos = TipMovInvLoader::loadSignMap($pathTipo);
 
     // Closure que devuelve el signo de un registro de KARMOVI
     $signCallback = function (array $row) use ($tipoSignos): int {
-        $kartipo = trim((string)($row['KARTIPO'] ?? ''));
-        return $tipoSignos[$kartipo] ?? 1; // si no se encuentra, asumir +1
+        return TipMovInvLoader::signFor($tipoSignos, $row);
     };
 
     // ----------------------------------------------------------------
