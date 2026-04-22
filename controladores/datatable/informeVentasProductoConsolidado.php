@@ -35,9 +35,9 @@ function agregarFiltroMultiple(&$where, &$params, &$types, $col, $vals) {
    Construye un lookup: TMICOD (string, 3 chars) → TMITIPO ('+' o '-')
    Este archivo tiene ~98 000 registros, se carga completo en memoria.
    ============================================================ */
-$pathTipMovInv = EnvLoader::resolvePath('DBF_TIPMOVINV');
+$pathTipMovInv = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_TIPMOVINV');
 if (!$pathTipMovInv || !file_exists($pathTipMovInv)) {
-    echo json_encode(['data' => [], 'error' => 'TIPMOVINV.DBF no encontrado. Verifique el .env']);
+    echo json_encode(['data' => [], 'error' => 'TIPMOVINV.DBF no encontrado. Verifique el .env. Path buscado: ' . $pathTipMovInv]);
     exit;
 }
 
@@ -67,7 +67,7 @@ for ($i = 0; $i < $tipTotal; $i += $batchSize) {
      TMITIPO = '-' → resta cantidad
      TMITIPO null  → resta (igual que el CASE original con tmi.tmiid IS NULL)
    ============================================================ */
-$pathKarmovi = EnvLoader::resolvePath('DBF_KARMOVI');
+$pathKarmovi = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_KARMOVI');
 if (!$pathKarmovi || !file_exists($pathKarmovi)) {
     echo json_encode(['data' => [], 'error' => 'KARMOVI.DBF no encontrado. Verifique el .env']);
     exit;

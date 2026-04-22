@@ -13,7 +13,7 @@ header('Content-Type: application/json; charset=utf-8');
 $draw = (int)($_POST['draw'] ?? 1);
 
 try {
-    $path = EnvLoader::resolvePath('DBF_TIPMOVINV');
+    $path = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_TIPMOVINV');
 
     if (!$path || !file_exists($path)) {
         echo json_encode([
@@ -21,7 +21,7 @@ try {
             'recordsTotal'    => 0,
             'recordsFiltered' => 0,
             'data'            => [],
-            'error'           => 'Archivo TIPMOVINV.DBF no encontrado. Verifique la ruta en el archivo .env',
+            'error'           => 'Archivo TIPMOVINV.DBF no encontrado. Verifique la ruta en el archivo .env, path buscado 2: ' . $path,
         ]);
         exit;
     }

@@ -78,4 +78,33 @@ class EnvLoader {
         // Relativa → combinar con la raíz del proyecto
         return dirname(__DIR__) . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $val);
     }
+
+    /**
+     * Resuelve una ruta de archivo combinando una variable de carpeta
+     * (p. ej. DBF_DIR) con una variable que contiene sólo el nombre
+     * del archivo (p. ej. DBF_KARMOVI = 'KARMOVI.DBF').
+     *
+     * Si el valor de $fileKey ya es una ruta absoluta, se devuelve tal cual
+     * (compatibilidad hacia atrás).
+     */
+    public static function resolveFileInDir(string $dirKey, string $fileKey, ?string $default = null): ?string {
+        $file = self::get($fileKey, $default);
+        if ($file === null || $file === '') return null;
+
+        // Si ya viene con ruta absoluta, respetarla
+        if (
+            str_starts_with($file, '/') ||
+            (strlen($file) >= 3 && $file[1] === ':')
+        ) {
+            return $file;
+        }
+
+        $dir = self::get($dirKey);
+        if ($dir === null || $dir === '') {
+            // Sin carpeta definida → resolver relativo a la raíz del proyecto
+            return self::resolvePath($fileKey);
+        }
+
+        return rtrim($dir, "/\\") . DIRECTORY_SEPARATOR . $file;
+    }
 }

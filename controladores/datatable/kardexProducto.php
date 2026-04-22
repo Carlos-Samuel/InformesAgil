@@ -39,7 +39,7 @@ try {
     // ----------------------------------------------------------------
     $tipoSignos = [];
 
-    $pathTipo = EnvLoader::resolvePath('DBF_TIPMOVINV');
+    $pathTipo = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_TIPMOVINV');
     if ($pathTipo && file_exists($pathTipo)) {
         $readerTipo = new DbfReader($pathTipo, 'CP1252');
         $totalTipo  = $readerTipo->getNumRecords();
@@ -73,7 +73,7 @@ try {
     // ----------------------------------------------------------------
     // 2. Leer y filtrar KARMOVI
     // ----------------------------------------------------------------
-    $pathKar = EnvLoader::resolvePath('DBF_KARMOVI');
+    $pathKar = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_KARMOVI');
 
     if (!$pathKar || !file_exists($pathKar)) {
         echo json_encode([

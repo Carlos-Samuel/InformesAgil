@@ -13,7 +13,7 @@ header('Content-Type: application/json; charset=utf-8');
 $draw = (int)($_POST['draw'] ?? 1);
 
 try {
-    $path = EnvLoader::resolvePath('DBF_KARMOVI');
+    $path = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_KARMOVI');
 
     if (!$path || !file_exists($path)) {
         echo json_encode([
