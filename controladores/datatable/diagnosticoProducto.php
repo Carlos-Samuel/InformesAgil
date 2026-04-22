@@ -12,9 +12,12 @@
  *               (con count de movimientos y existencia acumulada)
  *   resumen   → totales
  *
- * La comparación DBF ↔ MySQL se hace normalizando
- * (trim + minúsculas) pero también reportamos HEX + longitud
- * para ayudar a detectar espacios invisibles, NBSP, etc.
+ * IMPORTANTE: La comparación DBF ↔ MySQL se hace de forma
+ * ESTRICTA — byte a byte, exactamente igual. No se aplica
+ * trim, lower, upper ni ninguna normalización. Esto permite
+ * detectar exactamente qué está pasando con espacios, casing
+ * y caracteres invisibles. Se reportan HEX + longitud para
+ * confirmar visualmente.
  */
 require_once '../Connection.php';
 require_once '../EnvLoader.php';
@@ -23,7 +26,7 @@ require_once '../TipMovInvLoader.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-$q = trim($_REQUEST['q'] ?? '');
+$q = $_REQUEST['q'] ?? '';
 if ($q === '') {
     echo json_encode(['error' => 'Ingrese un término de búsqueda.']);
     exit;
@@ -31,7 +34,7 @@ if ($q === '') {
 
 try {
     // -------------------------------------------------------------
-    // 1. Buscar en MySQL (productos)
+    // 1. Buscar en MySQL (productos) — LIKE, sin normalizar nada
     // -------------------------------------------------------------
     $con  = Connection::getInstance()->getConnection();
     $like = '%' . $q . '%';
@@ -47,16 +50,15 @@ try {
     $stmt->execute();
     $result = $stmt->get_result();
 
-    $mysqlRows       = [];
-    $procodsCandidatos = [];   // set normalizado → true
+    $mysqlRows         = [];
+    $procodsCandidatos = [];   // set EXACTO (tal cual) → true
     while ($r = $result->fetch_assoc()) {
-        $procodRaw        = (string)$r['procod'];
-        $norm             = mb_strtolower(trim($procodRaw), 'UTF-8');
-        $r['procod_hex']  = strtoupper(bin2hex($procodRaw));
-        $r['procod_len']  = strlen($procodRaw);         // bytes
-        $r['procod_chars']= mb_strlen($procodRaw, 'UTF-8');
-        $mysqlRows[]      = $r;
-        if ($norm !== '') $procodsCandidatos[$norm] = true;
+        $procodRaw         = (string)$r['procod'];
+        $r['procod_hex']   = strtoupper(bin2hex($procodRaw));
+        $r['procod_len']   = strlen($procodRaw);                    // bytes
+        $r['procod_chars'] = mb_strlen($procodRaw, 'UTF-8');
+        $mysqlRows[]       = $r;
+        if ($procodRaw !== '') $procodsCandidatos[$procodRaw] = true;
     }
     $stmt->close();
 
@@ -68,10 +70,11 @@ try {
 
     // -------------------------------------------------------------
     // 3. Recorrer KARMOVI buscando PROCODs que:
-    //    (a) existen en $procodsCandidatos (match normalizado), o
-    //    (b) contienen $q literalmente (mb_stripos)
+    //    (a) existen EXACTAMENTE en $procodsCandidatos, o
+    //    (b) contienen $q literalmente (strpos — case sensitive,
+    //        sin trim, sin lower).
     //    Agrupamos por el PROCOD tal-cual del DBF para preservar
-    //    diferencias de casing / espacios.
+    //    cualquier diferencia de casing / espacios.
     // -------------------------------------------------------------
     $pathKar = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_KARMOVI');
     if (!$pathKar || !file_exists($pathKar)) {
@@ -81,7 +84,6 @@ try {
 
     $reader   = new DbfReader($pathKar, 'CP1252');
     $totalKar = $reader->getNumRecords();
-    $qLower   = mb_strtolower($q, 'UTF-8');
 
     $dbfAgg    = [];   // key: PROCOD tal cual → ['count', 'exist', 'tipos'=>[]]
     $batchSize = 5000;
@@ -90,13 +92,11 @@ try {
         $chunk = $reader->readRecords($i, min($batchSize, $totalKar - $i));
         foreach ($chunk as $row) {
             $rawProcod = (string)($row['PROCOD'] ?? '');
-            $rawTrim   = trim($rawProcod);
-            if ($rawTrim === '') continue;
+            if ($rawProcod === '') continue;
 
-            $norm = mb_strtolower($rawTrim, 'UTF-8');
-
-            $match = isset($procodsCandidatos[$norm])
-                  || mb_stripos($rawProcod, $qLower, 0, 'UTF-8') !== false;
+            // Match estricto: igualdad exacta O contiene q literalmente
+            $match = isset($procodsCandidatos[$rawProcod])
+                  || ($q !== '' && strpos($rawProcod, $q) !== false);
             if (!$match) continue;
 
             // Usamos el PROCOD tal como viene (preservando casing/espacios)
@@ -109,7 +109,7 @@ try {
             }
 
             $cant    = (float)($row['KARCANT'] ?? 0);
-            $kartipo = trim((string)($row['KARTIPO'] ?? ''));
+            $kartipo = (string)($row['KARTIPO'] ?? '');
             $sign    = $tipoSignos[$kartipo] ?? 1;
 
             $dbfAgg[$rawProcod]['count']++;
@@ -120,21 +120,20 @@ try {
     }
 
     // -------------------------------------------------------------
-    // 4. Armar tabla DBF + flag "en_mysql"
+    // 4. Armar tabla DBF + flag "en_mysql" (comparación exacta)
     // -------------------------------------------------------------
     $dbfRows       = [];
     $totalDbfExist = 0.0;
     foreach ($dbfAgg as $procod => $agg) {
-        $norm = mb_strtolower(trim($procod), 'UTF-8');
         $dbfRows[] = [
-            'procod'         => $procod,
-            'procod_hex'     => strtoupper(bin2hex($procod)),
-            'procod_len'     => strlen($procod),
-            'procod_chars'   => mb_strlen($procod, 'UTF-8'),
-            'count'          => $agg['count'],
-            'existencia'     => round($agg['exist'], 4),
-            'en_mysql'       => isset($procodsCandidatos[$norm]),
-            'tipos'          => $agg['tipos'],
+            'procod'       => $procod,
+            'procod_hex'   => strtoupper(bin2hex($procod)),
+            'procod_len'   => strlen($procod),
+            'procod_chars' => mb_strlen($procod, 'UTF-8'),
+            'count'        => $agg['count'],
+            'existencia'   => round($agg['exist'], 4),
+            'en_mysql'     => isset($procodsCandidatos[$procod]),
+            'tipos'        => $agg['tipos'],
         ];
         $totalDbfExist += $agg['exist'];
     }
@@ -146,17 +145,16 @@ try {
 
     // -------------------------------------------------------------
     // 5. Enriquecer filas MySQL con la existencia que resultaría
-    //    del JOIN contra tmp_existencias_dbf (mismo criterio del informe)
+    //    de un match EXACTO contra los PROCOD del DBF (byte a byte).
     // -------------------------------------------------------------
-    $dbfByNorm = [];   // norm → suma existencia
+    $dbfByExact = [];   // procod exacto → suma existencia
     foreach ($dbfAgg as $procod => $agg) {
-        $norm = mb_strtolower(trim($procod), 'UTF-8');
-        $dbfByNorm[$norm] = ($dbfByNorm[$norm] ?? 0.0) + $agg['exist'];
+        $dbfByExact[$procod] = ($dbfByExact[$procod] ?? 0.0) + $agg['exist'];
     }
     foreach ($mysqlRows as &$r) {
-        $norm = mb_strtolower(trim((string)$r['procod']), 'UTF-8');
-        $r['existencia_dbf'] = isset($dbfByNorm[$norm])
-            ? round($dbfByNorm[$norm], 4)
+        $procodRaw = (string)$r['procod'];
+        $r['existencia_dbf'] = isset($dbfByExact[$procodRaw])
+            ? round($dbfByExact[$procodRaw], 4)
             : null;
     }
     unset($r);
