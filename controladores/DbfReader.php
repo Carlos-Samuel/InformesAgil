@@ -144,6 +144,63 @@ class DbfReader {
         return array_slice($allMatched, $start, $length);
     }
 
+    /**
+     * Filtra registros por coincidencia exacta en un campo específico.
+     * Opcionalmente acumula la suma de otro campo numérico con signo variable.
+     *
+     * @param string        $fieldName     Campo por el que filtrar (ej. 'PROCOD').
+     * @param string        $value         Valor exacto a buscar (case-insensitive).
+     * @param int           $start         Índice 0-based dentro de los resultados filtrados.
+     * @param int           $length        Máximo de registros a devolver.
+     * @param int           $totalFiltered [out] Total de registros que coinciden.
+     * @param string|null   $sumField      Campo numérico a sumar (ej. 'KARCANT').
+     * @param float         $sumValue      [out] Suma total (con signo aplicado).
+     * @param callable|null $signCallback  Función que recibe una fila y devuelve +1, -1 ó 0.
+     *                                     Si es null se asume siempre +1.
+     * @return array[]
+     */
+    public function filterByField(
+        string   $fieldName,
+        string   $value,
+        int      $start,
+        int      $length,
+        int      &$totalFiltered,
+        ?string  $sumField = null,
+        float    &$sumValue = 0.0,
+        ?callable $signCallback = null
+    ): array {
+        $fh    = $this->openFile();
+        $value = mb_strtolower(trim($value), 'UTF-8');
+
+        fseek($fh, $this->headerSize);
+
+        $allMatched = [];
+        $sumValue   = 0.0;
+
+        for ($i = 0; $i < $this->numRecords; $i++) {
+            $raw = fread($fh, $this->recordSize);
+            if (strlen($raw) < $this->recordSize) break;
+            if ($raw[0] === '*') continue;
+
+            $row = $this->decodeRecord($raw);
+            if ($row === null) continue;
+
+            $fieldVal = mb_strtolower(trim((string)($row[$fieldName] ?? '')), 'UTF-8');
+            if ($fieldVal === $value) {
+                $allMatched[] = $row;
+                if ($sumField !== null && isset($row[$sumField]) && is_numeric($row[$sumField])) {
+                    $sign      = $signCallback ? (int)($signCallback($row)) : 1;
+                    $sumValue += $sign * (float)$row[$sumField];
+                }
+            }
+        }
+
+        fclose($fh);
+
+        $totalFiltered = count($allMatched);
+        return array_slice($allMatched, $start, $length);
+    }
+
     // ----------------------------------------------------------------
     // Métodos privados
     // ----------------------------------------------------------------

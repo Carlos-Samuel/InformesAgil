@@ -83,8 +83,8 @@ for ($i = 0; $i < $karTotal; $i += $batchSize) {
     foreach ($rows as $row) {
         // Filtrar por fecha (KARFECHA llega como 'YYYY-MM-DD HH:MM:SS' o null)
         $fecha = $row['KARFECHA'] ?? null;
-        if ($fecha === null) continue;
-        if (substr((string)$fecha, 0, 10) > $fechaFin) continue;
+        //if ($fecha === null) continue;
+        //if (substr((string)$fecha, 0, 10) > $fechaFin) continue;
 
         // Normalizar: mayúsculas + sin espacios, para que PHP y MySQL
         // coincidan aunque el DBF tenga variaciones de casing o padding.

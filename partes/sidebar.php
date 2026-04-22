@@ -20,6 +20,7 @@
               <span class="menu-title">Ventas</span>
             </a>
           </li>
+          
           <li class="menu-item">
             <a href="informeVentasProductoConsolidado.php">
               <span class="menu-icon">
@@ -28,6 +29,7 @@
               <span class="menu-title">V. Consolidado</span>
             </a>
           </li>
+          <!--
           <hr>
           <li class="menu-item">
             <a href="karmovi.php">
@@ -37,6 +39,16 @@
               <span class="menu-title">Kardex Mov.</span>
             </a>
           </li>
+          -->
+          <li class="menu-item">
+            <a href="kardexProducto.php">
+              <span class="menu-icon">
+                <i class="fa fa-magnifying-glass-chart"></i>
+              </span>
+              <span class="menu-title">Kardex Producto</span>
+            </a>
+          </li>
+          <!--
           <li class="menu-item">
             <a href="tipmovinv.php">
               <span class="menu-icon">
@@ -46,6 +58,7 @@
             </a>
           </li>
           <hr>
+          -->
           <div class = "container" style = "text-align: center;">
             <small>CS Software©<div id="footer-sidebar">todos los derechos reservados.</div></small>
           </div>
