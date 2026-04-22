@@ -11,10 +11,6 @@
             font-weight: 600;
             letter-spacing: 0.03em;
         }
-        #tablaKardexProducto td, #tablaKardexProducto th {
-            white-space: nowrap;
-            font-size: 0.82rem;
-        }
         .card-existencia {
             border-left: 5px solid #198754;
         }
@@ -65,8 +61,8 @@
                         </div>
                         <div class="col-12">
                             <small class="text-muted">
-                                Ingrese el código exacto del producto para ver todos sus movimientos en el kardex.
-                                La búsqueda escanea el archivo completo — puede tardar unos segundos.
+                                Ingrese el código exacto del producto para ver las existencias calculadas.
+                                El cálculo escanea el archivo completo — puede tardar unos segundos.
                             </small>
                         </div>
                     </div>
@@ -75,7 +71,12 @@
                 <!-- Panel de resultados (oculto hasta buscar) -->
                 <div id="panelResultados">
 
-                    <!-- Tarjeta de existencia total -->
+                    <div id="alertBuscando" class="alert alert-warning py-2 mb-3" style="display:none;">
+                        <i class="fa fa-clock me-1"></i>
+                        Escaneando el archivo completo. Por favor espere…
+                    </div>
+
+                    <!-- Tarjeta de existencia total + total movimientos -->
                     <div class="row mb-3 g-3">
                         <div class="col-md-4">
                             <div class="card shadow card-existencia h-100">
@@ -100,6 +101,23 @@
                                     <div id="totalMovimientos" class="existencia-valor" style="color:#0d6efd;">—</div>
                                     <div class="text-muted mt-1" style="font-size:0.78rem;">
                                         Registros encontrados en KARMOVI.DBF
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card shadow h-100">
+                                <div class="card-body d-flex flex-column justify-content-center">
+                                    <div class="text-muted mb-2" style="font-size:0.85rem;">
+                                        <i class="fa fa-file-csv me-1"></i> Exportar movimientos
+                                    </div>
+                                    <button id="btnDescargarCsv" class="btn btn-outline-success" disabled>
+                                        <i class="fa fa-download me-1"></i>
+                                        Descargar CSV con todos los registros
+                                    </button>
+                                    <div class="text-muted mt-2" style="font-size:0.78rem;">
+                                        Se incluirán los <strong id="totalMovimientosBtn">0</strong> movimientos
+                                        del producto seleccionado.
                                     </div>
                                 </div>
                             </div>
@@ -143,41 +161,6 @@
                         </div>
                     </div>
 
-                    <!-- Tabla de movimientos -->
-                    <div class="card p-3 shadow">
-                        <div id="alertBuscando" class="alert alert-warning py-2 mb-2" style="display:none;">
-                            <i class="fa fa-clock me-1"></i>
-                            Escaneando el archivo completo. Por favor espere…
-                        </div>
-                        <div class="table-responsive">
-                            <table id="tablaKardexProducto"
-                                   class="table table-bordered table-striped table-hover"
-                                   style="width:100%">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Producto</th>
-                                        <th>Tipo Mov.</th>
-                                        <th>Documento</th>
-                                        <th>Prefijo</th>
-                                        <th>Sede</th>
-                                        <th>Fecha</th>
-                                        <th>Hora</th>
-                                        <th>Bodega</th>
-                                        <th>Cantidad</th>
-                                        <th>Valor</th>
-                                        <th>Costo</th>
-                                        <th>Consecutivo</th>
-                                        <th>Estado</th>
-                                        <th>Empresa</th>
-                                        <th>Unidad</th>
-                                        <th>Tipo Aux.</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                    </div>
                 </div><!-- /panelResultados -->
 
             </main>
@@ -189,143 +172,88 @@
     <script>
     $(document).ready(function () {
 
-        var tabla = null;
         var procodActual = '';
 
-        function inicializarTabla(procod) {
-            // Destruir instancia anterior si existe
-            if (tabla !== null) {
-                tabla.destroy();
-                $('#tablaKardexProducto').empty().append('<thead class="table-dark"><tr><th>ID</th><th>Producto</th><th>Tipo Mov.</th><th>Documento</th><th>Prefijo</th><th>Sede</th><th>Fecha</th><th>Hora</th><th>Bodega</th><th>Cantidad</th><th>Valor</th><th>Costo</th><th>Consecutivo</th><th>Estado</th><th>Empresa</th><th>Unidad</th><th>Tipo Aux.</th></tr></thead><tbody></tbody>');
-                tabla = null;
-            }
+        function fmt(n) {
+            n = parseFloat(n) || 0;
+            return n.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+        }
 
-            tabla = $('#tablaKardexProducto').DataTable({
-                processing : true,
-                serverSide : true,
-                searching  : false,
-                ordering   : false,
-                pageLength : 50,
-                lengthMenu : [25, 50, 100, 250],
-                language   : {
-                    url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json'
-                },
-                ajax: {
-                    url  : 'controladores/datatable/kardexProducto.php',
-                    type : 'POST',
-                    data : function (d) {
-                        d.procod = procod;
-                        return d;
-                    },
-                    dataSrc: function (json) {
-                        // Actualizar existencia y totales
-                        var existencia = parseFloat(json.existencia) || 0;
-                        var $val = $('#existenciaValor');
-                        $val.text(existencia.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 4 }));
-                        $val.toggleClass('existencia-negativa', existencia < 0);
+        function resetUI() {
+            $('#existenciaValor').text('…');
+            $('#totalMovimientos').text('…');
+            $('#totalMovimientosBtn').text('0');
+            $('#existNoafSuma, #existNoafResta, #existSinNoafSuma, #existSinNoafResta').text('—');
+            $('#dbgNoAfecta').text('0');
+            $('#dbgDesconocidos').text('—');
+            $('#btnDescargarCsv').prop('disabled', true);
+        }
 
-                        $('#totalMovimientos').text((json.recordsFiltered || 0).toLocaleString('es-CO'));
-                        $('#existenciaProcod').text(procod.toUpperCase());
+        function cargarKardex(procod) {
+            procodActual = procod;
+            $('#panelResultados').show();
+            resetUI();
+            $('#alertBuscando').show();
 
-                        // Helper para formatear un número con signo/color
-                        function fmt(n) {
-                            n = parseFloat(n) || 0;
-                            return n.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-                        }
+            $.ajax({
+                url  : 'controladores/datatable/kardexProducto.php',
+                type : 'POST',
+                data : { procod: procod },
+                dataType: 'json'
+            }).done(function (json) {
+                $('#alertBuscando').hide();
 
-                        // 4 variantes de existencia
-                        var ex = json.existencias || {};
-                        $('#existNoafSuma'     ).text(fmt(ex.con_noafecta_desc_suma));
-                        $('#existNoafResta'    ).text(fmt(ex.con_noafecta_desc_resta));
-                        $('#existSinNoafSuma'  ).text(fmt(ex.sin_noafecta_desc_suma));
-                        $('#existSinNoafResta' ).text(fmt(ex.sin_noafecta_desc_resta));
-
-                        // Debug
-                        var dbg = json.debug || {};
-                        $('#dbgNoAfecta').text((dbg.registros_no_afecta || 0).toLocaleString('es-CO'));
-                        var desc = dbg.kartipos_desconocidos || {};
-                        var keys = Object.keys(desc);
-                        if (keys.length === 0) {
-                            $('#dbgDesconocidos').text('ninguno');
-                        } else {
-                            $('#dbgDesconocidos').text(
-                                keys.map(function (k) { return k + '(' + desc[k] + ')'; }).join(', ')
-                            );
-                        }
-
-                        if (json.error) {
-                            Swal.fire('Error', json.error, 'error');
-                        }
-                        return json.data || [];
-                    },
-                    error: function () {
-                        Swal.fire('Error', 'No se pudo cargar KARMOVI.DBF.', 'error');
-                    }
-                },
-                columns: [
-                    { data: 0 },
-                    { data: 1 },
-                    { data: 2 },
-                    { data: 3 },
-                    { data: 4 },
-                    { data: 5 },
-                    { data: 6 },
-                    { data: 7 },
-                    { data: 8 },
-                    { data: 9,  className: 'text-end' },
-                    { data: 10, className: 'text-end' },
-                    { data: 11, className: 'text-end' },
-                    { data: 12 },
-                    { data: 13 },
-                    { data: 14 },
-                    { data: 15 },
-                    { data: 16 },
-                ],
-                dom: 'Bfrtip',
-                buttons: [
-                    {
-                        extend   : 'excelHtml5',
-                        text     : '<i class="fa fa-file-excel me-1"></i> Excel',
-                        className: 'btn btn-success btn-sm',
-                        exportOptions: { columns: ':visible' }
-                    },
-                    {
-                        extend   : 'csvHtml5',
-                        text     : '<i class="fa fa-file-csv me-1"></i> CSV',
-                        className: 'btn btn-secondary btn-sm',
-                        exportOptions: { columns: ':visible' }
-                    },
-                    {
-                        extend   : 'print',
-                        text     : '<i class="fa fa-print me-1"></i> Imprimir',
-                        className: 'btn btn-info btn-sm',
-                        exportOptions: { columns: ':visible' }
-                    }
-                ],
-                preDrawCallback: function () {
-                    $('#alertBuscando').show();
-                },
-                drawCallback: function () {
-                    $('#alertBuscando').hide();
+                if (json.error) {
+                    Swal.fire('Error', json.error, 'error');
+                    return;
                 }
+
+                var existencia = parseFloat(json.existencia) || 0;
+                var $val = $('#existenciaValor');
+                $val.text(fmt(existencia));
+                $val.toggleClass('existencia-negativa', existencia < 0);
+
+                var totalMov = json.recordsFiltered || 0;
+                $('#totalMovimientos').text(totalMov.toLocaleString('es-CO'));
+                $('#totalMovimientosBtn').text(totalMov.toLocaleString('es-CO'));
+                $('#existenciaProcod').text(procod.toUpperCase());
+
+                var ex = json.existencias || {};
+                $('#existNoafSuma'    ).text(fmt(ex.con_noafecta_desc_suma));
+                $('#existNoafResta'   ).text(fmt(ex.con_noafecta_desc_resta));
+                $('#existSinNoafSuma' ).text(fmt(ex.sin_noafecta_desc_suma));
+                $('#existSinNoafResta').text(fmt(ex.sin_noafecta_desc_resta));
+
+                var dbg = json.debug || {};
+                $('#dbgNoAfecta').text((dbg.registros_no_afecta || 0).toLocaleString('es-CO'));
+                var desc = dbg.kartipos_desconocidos || {};
+                var keys = Object.keys(desc);
+                $('#dbgDesconocidos').text(
+                    keys.length === 0
+                        ? 'ninguno'
+                        : keys.map(function (k) { return k + '(' + desc[k] + ')'; }).join(', ')
+                );
+
+                // Habilitar botón CSV sólo si hay registros
+                $('#btnDescargarCsv').prop('disabled', totalMov === 0);
+
+            }).fail(function () {
+                $('#alertBuscando').hide();
+                Swal.fire('Error', 'No se pudo consultar KARMOVI.DBF.', 'error');
             });
         }
 
-        // Botón buscar
+        // Buscar
         $('#btnBuscar').on('click', function () {
             var procod = $('#inputProcod').val().trim();
             if (procod === '') {
                 Swal.fire('Atención', 'Por favor ingrese un código de producto.', 'warning');
                 return;
             }
-            procodActual = procod;
-            $('#panelResultados').show();
-            $('#existenciaValor').text('…');
-            $('#totalMovimientos').text('…');
-            inicializarTabla(procod);
+            cargarKardex(procod);
         });
 
-        // Buscar al presionar Enter
+        // Enter dispara la búsqueda
         $('#inputProcod').on('keydown', function (e) {
             if (e.key === 'Enter') $('#btnBuscar').click();
         });
@@ -334,10 +262,16 @@
         $('#btnLimpiar').on('click', function () {
             $('#inputProcod').val('').focus();
             $('#panelResultados').hide();
-            if (tabla !== null) {
-                tabla.destroy();
-                tabla = null;
-            }
+            procodActual = '';
+        });
+
+        // Descargar CSV con todos los movimientos del producto consultado
+        $('#btnDescargarCsv').on('click', function () {
+            if (!procodActual) return;
+            var url = 'controladores/datatable/kardexProducto.php'
+                    + '?format=csv'
+                    + '&procod=' + encodeURIComponent(procodActual);
+            window.location.href = url;
         });
     });
     </script>

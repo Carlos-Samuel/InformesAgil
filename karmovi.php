@@ -33,12 +33,12 @@
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <small class="text-muted">
                             Los datos se cargan directamente desde <code>KARMOVI.DBF</code>.
-                            La paginación es instantánea; la búsqueda requiere escanear el archivo completo.
+                            Se descarga el archivo completo en la primera carga — puede tardar.
                         </small>
                     </div>
-                    <div id="alertSearchWarning" class="alert alert-warning py-2 alert-search-warning">
+                    <div id="alertCargando" class="alert alert-warning py-2">
                         <i class="fa fa-clock me-1"></i>
-                        Buscando en el archivo completo (~638 000 registros). Por favor espere…
+                        Cargando el archivo completo (~638 000 registros). Por favor espere…
                     </div>
                     <div class="table-responsive">
                         <table id="tablaKarmovi" class="table table-bordered table-striped table-hover" style="width:100%">
@@ -76,44 +76,41 @@
     <script>
     $(document).ready(function () {
 
-        var searchTimer = null;
-
-        var tabla = $('#tablaKarmovi').DataTable({
-            processing   : true,
-            serverSide   : true,
-            searching    : true,
-            ordering     : false,   // ordenamiento en servidor requeriría escaneo completo
-            pageLength   : 50,
-            lengthMenu   : [25, 50, 100, 250],
-            language     : {
+        $('#tablaKarmovi').DataTable({
+            processing : true,
+            serverSide : false,           // carga completa — paginación en cliente
+            searching  : true,
+            ordering   : true,
+            pageLength : 50,
+            lengthMenu : [25, 50, 100, 250, 500],
+            language   : {
                 url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json'
             },
+            deferRender: true,            // no render todas las filas al inicio
             ajax: {
-                url  : 'controladores/datatable/karmovi.php',
-                type : 'POST',
-                data : function (d) { return d; },
-                error: function (xhr, error, thrown) {
+                url     : 'controladores/datatable/karmovi.php',
+                type    : 'POST',
+                dataSrc : function (json) {
+                    $('#alertCargando').hide();
+                    if (json.error) {
+                        Swal.fire('Error', json.error, 'error');
+                        return [];
+                    }
+                    return json.data || [];
+                },
+                error: function () {
+                    $('#alertCargando').hide();
                     Swal.fire('Error', 'No se pudo cargar KARMOVI.DBF. Verifique la ruta en el archivo .env', 'error');
                 }
             },
             columns: [
-                { data: 0 },  // KARID
-                { data: 1 },  // PROCOD
-                { data: 2 },  // KARTIPO
-                { data: 3 },  // KARDOCU
-                { data: 4 },  // PRFCOD
-                { data: 5 },  // SEDE
-                { data: 6 },  // KARFECHA
-                { data: 7 },  // KARHORA
-                { data: 8 },  // BODCOD
-                { data: 9,  className: 'text-end' },  // KARCANT
-                { data: 10, className: 'text-end' },  // KARVALOR
-                { data: 11, className: 'text-end' },  // KARCOSTO
-                { data: 12 }, // KARCONSE
-                { data: 13 }, // KARESTADO
-                { data: 14 }, // EMPCOD
-                { data: 15 }, // PROUND
-                { data: 16 }, // TMIAUX
+                { data: 0 },  { data: 1 },  { data: 2 },  { data: 3 },
+                { data: 4 },  { data: 5 },  { data: 6 },  { data: 7 },
+                { data: 8 },
+                { data: 9,  className: 'text-end' },
+                { data: 10, className: 'text-end' },
+                { data: 11, className: 'text-end' },
+                { data: 12 }, { data: 13 }, { data: 14 }, { data: 15 }, { data: 16 },
             ],
             dom: 'Bfrtip',
             buttons: [
@@ -135,26 +132,7 @@
                     className: 'btn btn-info btn-sm',
                     exportOptions: { columns: ':visible' }
                 }
-            ],
-            initComplete: function () {
-                // Retrasar la búsqueda 1.5 s para evitar solicitudes por cada tecla
-                var api = this.api();
-                $('#tablaKarmovi_filter input').off('keyup.DT search.DT input.DT paste.DT cut.DT')
-                    .on('keyup', function () {
-                        var val = this.value;
-                        clearTimeout(searchTimer);
-                        if (val.length > 0) {
-                            $('#alertSearchWarning').show();
-                        }
-                        searchTimer = setTimeout(function () {
-                            api.search(val).draw();
-                            if (val.length === 0) $('#alertSearchWarning').hide();
-                        }, 1500);
-                    });
-            },
-            drawCallback: function () {
-                $('#alertSearchWarning').hide();
-            }
+            ]
         });
     });
     </script>

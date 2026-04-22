@@ -75,17 +75,25 @@
 
         var tabla = $('#tablaTipMovInv').DataTable({
             processing : true,
-            serverSide : true,
+            serverSide : false,           // carga completa — paginación en cliente
             searching  : true,
-            ordering   : false,
+            ordering   : true,
             pageLength : 50,
-            lengthMenu : [25, 50, 100, 200],
+            lengthMenu : [25, 50, 100, 200, 500],
             language   : {
                 url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json'
             },
+            deferRender: true,
             ajax: {
-                url  : 'controladores/datatable/tipmovinv.php',
-                type : 'POST',
+                url    : 'controladores/datatable/tipmovinv.php',
+                type   : 'POST',
+                dataSrc: function (json) {
+                    if (json.error) {
+                        Swal.fire('Error', json.error, 'error');
+                        return [];
+                    }
+                    return json.data || [];
+                },
                 error: function () {
                     Swal.fire('Error', 'No se pudo cargar TIPMOVINV.DBF. Verifique la ruta en el archivo .env', 'error');
                 }

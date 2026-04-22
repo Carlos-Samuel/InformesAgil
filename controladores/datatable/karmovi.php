@@ -1,36 +1,26 @@
 <?php
 /**
- * Endpoint DataTables (server-side) para KARMOVI.DBF
- *
- * Parámetros POST estándar de DataTables:
- *   draw, start, length, search[value]
+ * Endpoint de datos para KARMOVI.DBF — sin paginación server-side.
+ * Devuelve TODOS los registros en un único JSON (la tabla se pagina en cliente).
  */
 require_once '../EnvLoader.php';
 require_once '../DbfReader.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-$draw = (int)($_POST['draw'] ?? 1);
-
 try {
     $path = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_KARMOVI');
 
     if (!$path || !file_exists($path)) {
         echo json_encode([
-            'draw'            => $draw,
-            'recordsTotal'    => 0,
-            'recordsFiltered' => 0,
-            'data'            => [],
-            'error'           => 'Archivo KARMOVI.DBF no encontrado. Verifique la ruta en el archivo .env',
+            'data'  => [],
+            'error' => 'Archivo KARMOVI.DBF no encontrado. Verifique la ruta en el archivo .env',
         ]);
         exit;
     }
 
-    $reader     = new DbfReader($path, 'CP1252');
-    $total      = $reader->getNumRecords();
-    $start      = max(0, (int)($_POST['start']  ?? 0));
-    $length     = max(1, (int)($_POST['length'] ?? 50));
-    $search     = trim($_POST['search']['value'] ?? '');
+    $reader = new DbfReader($path, 'CP1252');
+    $total  = $reader->getNumRecords();
 
     // Columnas a mostrar (subconjunto de los 40 campos del archivo)
     $columns = [
@@ -40,21 +30,14 @@ try {
         'KARCONSE', 'KARESTADO', 'EMPCOD', 'PROUND', 'TMIAUX',
     ];
 
-    if ($search !== '') {
-        $filtered = 0;
-        $rows     = $reader->searchRecords($search, $start, $length, $filtered);
-    } else {
-        $filtered = $total;
-        $rows     = $reader->readRecords($start, $length);
-    }
+    // Leer TODO el archivo de una vez
+    $rows = $reader->readRecords(0, $total);
 
-    // Convertir cada fila en un array de valores en el orden de $columns
     $data = [];
     foreach ($rows as $row) {
         $item = [];
         foreach ($columns as $col) {
             $val = $row[$col] ?? null;
-            // Booleanos → legibles
             if (is_bool($val)) {
                 $item[] = $val ? 'Sí' : 'No';
             } elseif ($val === null) {
@@ -67,18 +50,13 @@ try {
     }
 
     echo json_encode([
-        'draw'            => $draw,
-        'recordsTotal'    => $total,
-        'recordsFiltered' => $filtered,
-        'data'            => $data,
+        'data'  => $data,
+        'total' => count($data),
     ], JSON_UNESCAPED_UNICODE);
 
 } catch (Throwable $e) {
     echo json_encode([
-        'draw'            => $draw,
-        'recordsTotal'    => 0,
-        'recordsFiltered' => 0,
-        'data'            => [],
-        'error'           => $e->getMessage(),
+        'data'  => [],
+        'error' => $e->getMessage(),
     ]);
 }
