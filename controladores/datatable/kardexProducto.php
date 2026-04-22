@@ -48,25 +48,46 @@ if ($format === 'csv') {
 
     $out = fopen('php://output', 'w');
 
-    $columns = [
+    // Cargar mapa de signos desde TIPMOVINV (respetando TMINOAFECT).
+    // El "default" de KARTIPO desconocido se aplica en cada variante de columna.
+    $pathTipo   = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_TIPMOVINV');
+    $tipoSignos = TipMovInvLoader::loadSignMapVariant($pathTipo, true);
+
+    $baseColumns = [
         'KARID', 'PROCOD', 'KARTIPO', 'KARDOCU', 'PRFCOD', 'SEDE',
         'KARFECHA', 'KARHORA', 'BODCOD',
         'KARCANT', 'KARVALOR', 'KARCOSTO',
         'KARCONSE', 'KARESTADO', 'EMPCOD', 'PROUND', 'TMIAUX',
     ];
-    fputcsv($out, $columns);
+    // Dos columnas nuevas con la cantidad con signo aplicado:
+    //   - CANT_DESC_POS: KARTIPO desconocido → asume +1 (suma)
+    //   - CANT_DESC_NEG: KARTIPO desconocido → asume -1 (resta)
+    // En ambas, TMINOAFECT=true produce 0.
+    $extraColumns = ['CANT_DESC_POS', 'CANT_DESC_NEG'];
+    fputcsv($out, array_merge($baseColumns, $extraColumns));
 
     $reader     = new DbfReader($pathKar, 'CP1252');
     $allMatched = $reader->findAllByField('PROCOD', $procod);
 
     foreach ($allMatched as $row) {
         $line = [];
-        foreach ($columns as $col) {
+        foreach ($baseColumns as $col) {
             $val = $row[$col] ?? null;
             if (is_bool($val))       $line[] = $val ? 'Si' : 'No';
             elseif ($val === null)   $line[] = '';
             else                     $line[] = $val;
         }
+
+        // Calcular las dos columnas con cantidad signada
+        $cant    = (float)($row['KARCANT'] ?? 0);
+        $kartipo = trim((string)($row['KARTIPO'] ?? ''));
+
+        $signPos = $tipoSignos[$kartipo] ?? 1;   // desconocidos → suman
+        $signNeg = $tipoSignos[$kartipo] ?? -1;  // desconocidos → restan
+
+        $line[] = round($signPos * $cant, 4);
+        $line[] = round($signNeg * $cant, 4);
+
         fputcsv($out, $line);
     }
 
