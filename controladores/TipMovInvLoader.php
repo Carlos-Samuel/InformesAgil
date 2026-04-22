@@ -70,4 +70,50 @@ class TipMovInvLoader {
         $kartipo = trim((string)($karmoviRow['KARTIPO'] ?? ''));
         return $signMap[$kartipo] ?? 1;
     }
+
+    /**
+     * Variante configurable — útil para comparar reglas de negocio.
+     *
+     * @param bool $respetarNoAfecta Si true, TMINOAFECT=true → signo 0.
+     *                               Si false, se ignora ese campo y se usa sólo TMITIPO.
+     */
+    public static function loadSignMapVariant(
+        string $pathTipMovInv,
+        bool   $respetarNoAfecta,
+        int    $batchSize = 2000
+    ): array {
+        $map = [];
+
+        if (!is_readable($pathTipMovInv)) {
+            return $map;
+        }
+
+        $reader = new DbfReader($pathTipMovInv, 'CP1252');
+        $total  = $reader->getNumRecords();
+
+        for ($i = 0; $i < $total; $i += $batchSize) {
+            $chunk = $reader->readRecords($i, min($batchSize, $total - $i));
+            foreach ($chunk as $row) {
+                $cod = trim((string)($row['TMICOD'] ?? ''));
+                if ($cod === '') continue;
+
+                $noAfecta = $row['TMINOAFECT'] ?? false;
+                if ($respetarNoAfecta && $noAfecta === true) {
+                    $map[$cod] = 0;
+                    continue;
+                }
+
+                $tmitipo = trim((string)($row['TMITIPO'] ?? ''));
+                if ($tmitipo === '+') {
+                    $map[$cod] = 1;
+                } elseif ($tmitipo === '-') {
+                    $map[$cod] = -1;
+                } else {
+                    $map[$cod] = 1;
+                }
+            }
+        }
+
+        return $map;
+    }
 }

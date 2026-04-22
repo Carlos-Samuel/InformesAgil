@@ -106,6 +106,43 @@
                         </div>
                     </div>
 
+                    <!-- 4 variantes de Existencia Total (diagnóstico) -->
+                    <div class="card shadow mb-3">
+                        <div class="card-header py-2" style="font-size:0.9rem;">
+                            <i class="fa fa-balance-scale me-1"></i>
+                            Existencia Total según regla aplicada
+                            <small class="text-muted">(para comparar con el informe consolidado)</small>
+                        </div>
+                        <div class="card-body p-2">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-0" style="font-size:0.88rem;">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Regla</th>
+                                            <th class="text-end">Respeta TMINOAFECT · desc. SUMAN</th>
+                                            <th class="text-end">Respeta TMINOAFECT · desc. RESTAN</th>
+                                            <th class="text-end">Ignora TMINOAFECT · desc. SUMAN</th>
+                                            <th class="text-end">Ignora TMINOAFECT · desc. RESTAN</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>Existencia</strong></td>
+                                            <td class="text-end" id="existNoafSuma">—</td>
+                                            <td class="text-end" id="existNoafResta">—</td>
+                                            <td class="text-end" id="existSinNoafSuma">—</td>
+                                            <td class="text-end" id="existSinNoafResta">—</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="text-muted mt-2" style="font-size:0.78rem;">
+                                Registros con <code>TMINOAFECT=true</code>: <strong id="dbgNoAfecta">0</strong> &nbsp;|&nbsp;
+                                KARTIPOS no presentes en TIPMOVINV: <strong id="dbgDesconocidos">—</strong>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Tabla de movimientos -->
                     <div class="card p-3 shadow">
                         <div id="alertBuscando" class="alert alert-warning py-2 mb-2" style="display:none;">
@@ -189,6 +226,32 @@
 
                         $('#totalMovimientos').text((json.recordsFiltered || 0).toLocaleString('es-CO'));
                         $('#existenciaProcod').text(procod.toUpperCase());
+
+                        // Helper para formatear un número con signo/color
+                        function fmt(n) {
+                            n = parseFloat(n) || 0;
+                            return n.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+                        }
+
+                        // 4 variantes de existencia
+                        var ex = json.existencias || {};
+                        $('#existNoafSuma'     ).text(fmt(ex.con_noafecta_desc_suma));
+                        $('#existNoafResta'    ).text(fmt(ex.con_noafecta_desc_resta));
+                        $('#existSinNoafSuma'  ).text(fmt(ex.sin_noafecta_desc_suma));
+                        $('#existSinNoafResta' ).text(fmt(ex.sin_noafecta_desc_resta));
+
+                        // Debug
+                        var dbg = json.debug || {};
+                        $('#dbgNoAfecta').text((dbg.registros_no_afecta || 0).toLocaleString('es-CO'));
+                        var desc = dbg.kartipos_desconocidos || {};
+                        var keys = Object.keys(desc);
+                        if (keys.length === 0) {
+                            $('#dbgDesconocidos').text('ninguno');
+                        } else {
+                            $('#dbgDesconocidos').text(
+                                keys.map(function (k) { return k + '(' + desc[k] + ')'; }).join(', ')
+                            );
+                        }
 
                         if (json.error) {
                             Swal.fire('Error', json.error, 'error');

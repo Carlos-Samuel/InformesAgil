@@ -201,6 +201,37 @@ class DbfReader {
         return array_slice($allMatched, $start, $length);
     }
 
+    /**
+     * Devuelve TODOS los registros que coinciden exactamente con $value
+     * en el campo $fieldName (case-insensitive). Sin paginación ni suma.
+     * Útil cuando se necesita calcular varios agregados sobre el mismo
+     * subconjunto sin volver a escanear el archivo.
+     */
+    public function findAllByField(string $fieldName, string $value): array {
+        $fh    = $this->openFile();
+        $value = mb_strtolower(trim($value), 'UTF-8');
+
+        fseek($fh, $this->headerSize);
+
+        $matched = [];
+        for ($i = 0; $i < $this->numRecords; $i++) {
+            $raw = fread($fh, $this->recordSize);
+            if (strlen($raw) < $this->recordSize) break;
+            if ($raw[0] === '*') continue;
+
+            $row = $this->decodeRecord($raw);
+            if ($row === null) continue;
+
+            $fieldVal = mb_strtolower(trim((string)($row[$fieldName] ?? '')), 'UTF-8');
+            if ($fieldVal === $value) {
+                $matched[] = $row;
+            }
+        }
+
+        fclose($fh);
+        return $matched;
+    }
+
     // ----------------------------------------------------------------
     // Métodos privados
     // ----------------------------------------------------------------

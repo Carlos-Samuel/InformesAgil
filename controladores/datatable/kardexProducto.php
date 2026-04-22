@@ -35,19 +35,15 @@ if ($procod === '') {
 
 try {
     // ----------------------------------------------------------------
-    // 1. Cargar TIPMOVINV y construir mapa de signos
-    //    (regla unificada — ver TipMovInvLoader::loadSignMap)
+    // 1. Cargar TIPMOVINV: dos variantes del mapa de signos
+    //    (una respetando TMINOAFECT, otra ignorándolo)
     // ----------------------------------------------------------------
-    $pathTipo   = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_TIPMOVINV');
-    $tipoSignos = TipMovInvLoader::loadSignMap($pathTipo);
-
-    // Closure que devuelve el signo de un registro de KARMOVI
-    $signCallback = function (array $row) use ($tipoSignos): int {
-        return TipMovInvLoader::signFor($tipoSignos, $row);
-    };
+    $pathTipo            = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_TIPMOVINV');
+    $mapConNoAfecta      = TipMovInvLoader::loadSignMapVariant($pathTipo, true);
+    $mapSinNoAfecta      = TipMovInvLoader::loadSignMapVariant($pathTipo, false);
 
     // ----------------------------------------------------------------
-    // 2. Leer y filtrar KARMOVI
+    // 2. Leer KARMOVI y traer TODAS las coincidencias (sin paginar)
     // ----------------------------------------------------------------
     $pathKar = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_KARMOVI');
 
@@ -68,23 +64,55 @@ try {
     $start  = max(0, (int)($_POST['start']  ?? 0));
     $length = max(1, (int)($_POST['length'] ?? 50));
 
-    $filtered   = 0;
-    $existencia = 0.0;
-
-    $rows = $reader->filterByField(
-        'PROCOD',
-        $procod,
-        $start,
-        $length,
-        $filtered,
-        'KARCANT',
-        $existencia,
-        $signCallback   // ← aplica el signo correcto por tipo de movimiento
-    );
+    $allMatched = $reader->findAllByField('PROCOD', $procod);
+    $filtered   = count($allMatched);
 
     // ----------------------------------------------------------------
-    // 3. Armar respuesta
+    // 3. Calcular las 4 variantes de Existencia Total
+    //    Eje A: respetar TMINOAFECT (sí / no)
+    //    Eje B: KARTIPO desconocido → suma (+1) / resta (-1)
     // ----------------------------------------------------------------
+    $existNoafSumaDesc   = 0.0; // respeta TMINOAFECT + desconocidos SUMAN
+    $existNoafRestaDesc  = 0.0; // respeta TMINOAFECT + desconocidos RESTAN
+    $existNoNoafSumaDesc = 0.0; // ignora TMINOAFECT + desconocidos SUMAN
+    $existNoNoafRestaDesc= 0.0; // ignora TMINOAFECT + desconocidos RESTAN
+
+    $desconocidos        = [];  // KARTIPO vistos que no están en TIPMOVINV
+    $totalNoAfecta       = 0;   // # registros cuyo KARTIPO tiene TMINOAFECT=true
+
+    foreach ($allMatched as $row) {
+        $cant    = (float)($row['KARCANT'] ?? 0);
+        $kartipo = trim((string)($row['KARTIPO'] ?? ''));
+
+        // Variante 1: respeta NoAfecta; desconocidos suman
+        $s = $mapConNoAfecta[$kartipo] ?? 1;
+        $existNoafSumaDesc   += $s * $cant;
+
+        // Variante 2: respeta NoAfecta; desconocidos restan
+        $s = $mapConNoAfecta[$kartipo] ?? -1;
+        $existNoafRestaDesc  += $s * $cant;
+
+        // Variante 3: ignora NoAfecta; desconocidos suman
+        $s = $mapSinNoAfecta[$kartipo] ?? 1;
+        $existNoNoafSumaDesc += $s * $cant;
+
+        // Variante 4: ignora NoAfecta; desconocidos restan
+        $s = $mapSinNoAfecta[$kartipo] ?? -1;
+        $existNoNoafRestaDesc+= $s * $cant;
+
+        // Diagnósticos
+        if (!isset($mapConNoAfecta[$kartipo])) {
+            $desconocidos[$kartipo] = ($desconocidos[$kartipo] ?? 0) + 1;
+        } elseif (($mapConNoAfecta[$kartipo] ?? null) === 0) {
+            $totalNoAfecta++;
+        }
+    }
+
+    // ----------------------------------------------------------------
+    // 4. Paginación para la tabla
+    // ----------------------------------------------------------------
+    $pageRows = array_slice($allMatched, $start, $length);
+
     $columns = [
         'KARID', 'PROCOD', 'KARTIPO', 'KARDOCU', 'PRFCOD', 'SEDE',
         'KARFECHA', 'KARHORA', 'BODCOD',
@@ -93,7 +121,7 @@ try {
     ];
 
     $data = [];
-    foreach ($rows as $row) {
+    foreach ($pageRows as $row) {
         $item = [];
         foreach ($columns as $col) {
             $val = $row[$col] ?? null;
@@ -113,7 +141,20 @@ try {
         'recordsTotal'    => $total,
         'recordsFiltered' => $filtered,
         'data'            => $data,
-        'existencia'      => round($existencia, 4),
+        // Existencia principal (regla oficial: respeta TMINOAFECT, desconocidos suman)
+        'existencia'      => round($existNoafSumaDesc, 4),
+        // Las 4 variantes para diagnóstico / comparación con el informe
+        'existencias' => [
+            'con_noafecta_desc_suma'  => round($existNoafSumaDesc,    4),
+            'con_noafecta_desc_resta' => round($existNoafRestaDesc,   4),
+            'sin_noafecta_desc_suma'  => round($existNoNoafSumaDesc,  4),
+            'sin_noafecta_desc_resta' => round($existNoNoafRestaDesc, 4),
+        ],
+        'debug' => [
+            'registros_total'       => $filtered,
+            'registros_no_afecta'   => $totalNoAfecta,
+            'kartipos_desconocidos' => $desconocidos, // ['XYZ' => 4, ...]
+        ],
     ], JSON_UNESCAPED_UNICODE);
 
 } catch (Throwable $e) {
