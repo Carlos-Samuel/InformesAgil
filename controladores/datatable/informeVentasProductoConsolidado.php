@@ -172,7 +172,8 @@ $sql = "
     LEFT JOIN prefijo      AS pre    ON ve.prfid    = pre.prfid
 
     -- Existencias calculadas desde los DBF (reemplaza la subconsulta original)
-    LEFT JOIN tmp_existencias_dbf AS inv ON prod.procod = inv.procod
+    LEFT JOIN tmp_existencias_dbf AS inv 
+        ON UPPER(TRIM(prod.procod)) = inv.procod
 
     $whereVentas
     AND prod.procod IS NOT NULL
