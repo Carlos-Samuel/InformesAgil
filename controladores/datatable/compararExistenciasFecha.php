@@ -118,13 +118,26 @@ try {
             $sign    = $tipoSignos[$kartipo] ?? -1;
             $signed  = $sign * $cant;
 
-            $karfecha = $row['KARFECHA'] ?? null;   // normalmente YYYY-MM-DD (parseado por DbfReader)
+            $karfecha = $row['KARFECHA'] ?? null;   // puede venir como YYYY-MM-DD o YYYY-MM-DD HH:MM:SS (VFP tipo T)
             $karfechaStr = ($karfecha === null) ? '' : (string)$karfecha;
+
+            // Extraer sólo la porción de fecha (YYYY-MM-DD), aceptando el sufijo de hora opcional.
+            $karfechaDate = '';
+            $anio = '';
+            $mes  = '';
+            if (preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:[\sT].*)?$/', $karfechaStr, $m)) {
+                $karfechaDate = $m[1] . '-' . $m[2] . '-' . $m[3];
+                $anio = $m[1];
+                $mes  = $m[1] . '-' . $m[2];
+            } else {
+                $countSinFecha++;
+            }
 
             // Capturar muestra cruda para inspección
             if (count($muestraRaw) < $muestraMax) {
                 $muestraRaw[] = [
                     'karfecha_parsed' => $karfechaStr,
+                    'karfecha_date'   => $karfechaDate,
                     'karfecha_hex'    => strtoupper(bin2hex($karfechaStr)),
                     'karfecha_len'    => strlen($karfechaStr),
                     'karhora'         => (string)($row['KARHORA'] ?? ''),
@@ -140,15 +153,6 @@ try {
             $existTotal += $signed;
             $countTotal++;
 
-            $anio = '';
-            $mes  = '';
-            if (preg_match('/^(\d{4})-(\d{2})-\d{2}$/', $karfechaStr, $m)) {
-                $anio = $m[1];
-                $mes  = $m[1] . '-' . $m[2];
-            } else {
-                $countSinFecha++;
-            }
-
             if ($anio !== '') {
                 if (!isset($porAnio[$anio]))    $porAnio[$anio]    = ['count' => 0, 'sum' => 0.0];
                 if (!isset($porAnioMes[$mes]))  $porAnioMes[$mes]  = ['count' => 0, 'sum' => 0.0];
@@ -158,16 +162,16 @@ try {
                 $porAnioMes[$mes]['sum'] += $signed;
             }
 
-            // Corte <= fechaCorte
-            if ($fechaCorteN !== null && $karfechaStr !== '' && $karfechaStr <= $fechaCorteN) {
+            // Corte <= fechaCorte (comparamos sólo con la parte de fecha)
+            if ($fechaCorteN !== null && $karfechaDate !== '' && $karfechaDate <= $fechaCorteN) {
                 $existCorte += $signed;
                 $countCorte++;
             }
 
             // Rango fechaInicio..fechaFin (cualquiera de los extremos puede faltar)
             $inRango = true;
-            if ($fechaInicioN !== null && ($karfechaStr === '' || $karfechaStr < $fechaInicioN)) $inRango = false;
-            if ($fechaFinN    !== null && ($karfechaStr === '' || $karfechaStr > $fechaFinN))    $inRango = false;
+            if ($fechaInicioN !== null && ($karfechaDate === '' || $karfechaDate < $fechaInicioN)) $inRango = false;
+            if ($fechaFinN    !== null && ($karfechaDate === '' || $karfechaDate > $fechaFinN))    $inRango = false;
             if ($fechaInicioN === null && $fechaFinN === null) $inRango = false; // si no se pide rango, no contamos
             if ($inRango) {
                 $existRango += $signed;
