@@ -91,16 +91,6 @@
                                 Exportar CSV
                             </button>
                         </div>
-                        <div class="col">
-                            <small class="text-muted">
-                                Escanea <code>KARMOVI.DBF</code> completo y agrupa por
-                                <code>PROCOD</code>. Regla aplicada:
-                                <strong>Ignora TMINOAFECT</strong> y los
-                                <code>KARTIPO</code> no registrados en
-                                <code>TIPMOVINV</code> se tratan como <strong>resta</strong>.
-                                Puede tardar varios segundos.
-                            </small>
-                        </div>
                     </div>
                 </div>
 

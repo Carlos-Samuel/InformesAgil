@@ -61,9 +61,14 @@ try {
     $total     = $reader->getNumRecords();
     $batchSize = 5000;
 
-    // Acumuladores por PROCOD
-    $existencias          = []; // [procod => float existencia acumulada]
-    $movimientosPorProd   = []; // [procod => int registros sumados]
+    // Acumuladores por PROCOD normalizado (misma normalización que
+    // DbfReader::findAllByField usada por el Kardex por Producto:
+    // mb_strtolower + trim). Sin esto, registros con distinta
+    // capitalización del mismo código quedarían en filas separadas
+    // y los totales no cuadrarían con el Kardex.
+    $existencias          = []; // [procodKey => float existencia acumulada]
+    $movimientosPorProd   = []; // [procodKey => int registros sumados]
+    $procodDisplay        = []; // [procodKey => PROCOD tal como se mostrará (trim del primer raw visto)]
     $kartiposDesconocidos = []; // [kartipo => cantidad global]
 
     $t0 = microtime(true);
@@ -72,8 +77,11 @@ try {
         $rows = $reader->readRecords($i, min($batchSize, $total - $i));
 
         foreach ($rows as $row) {
-            $procod = trim((string)($row['PROCOD'] ?? ''));
-            if ($procod === '') continue;
+            $procodRaw = trim((string)($row['PROCOD'] ?? ''));
+            if ($procodRaw === '') continue;
+
+            // Clave de agrupación idéntica a la que usa el Kardex:
+            $procodKey = mb_strtolower($procodRaw, 'UTF-8');
 
             $cant    = (float)($row['KARCANT'] ?? 0);
             $kartipo = trim((string)($row['KARTIPO'] ?? ''));
@@ -81,12 +89,13 @@ try {
             // Regla: KARTIPO desconocido → resta (-1). Se ignora TMINOAFECT.
             $sign = $tipoSignos[$kartipo] ?? -1;
 
-            if (!isset($existencias[$procod])) {
-                $existencias[$procod]        = 0.0;
-                $movimientosPorProd[$procod] = 0;
+            if (!isset($existencias[$procodKey])) {
+                $existencias[$procodKey]        = 0.0;
+                $movimientosPorProd[$procodKey] = 0;
+                $procodDisplay[$procodKey]      = $procodRaw;
             }
-            $existencias[$procod]        += $sign * $cant;
-            $movimientosPorProd[$procod] += 1;
+            $existencias[$procodKey]        += $sign * $cant;
+            $movimientosPorProd[$procodKey] += 1;
 
             if (!isset($tipoSignos[$kartipo])) {
                 $key = $kartipo === '' ? '(VACIO)' : $kartipo;
@@ -100,11 +109,11 @@ try {
     // 3. Pasar a arreglo plano y ordenar ASC por PROCOD
     // ------------------------------------------------------------
     $salida = [];
-    foreach ($existencias as $procod => $valor) {
+    foreach ($existencias as $procodKey => $valor) {
         $salida[] = [
-            'procod'      => $procod,
+            'procod'      => $procodDisplay[$procodKey],
             'existencia'  => round($valor, 4),
-            'movimientos' => $movimientosPorProd[$procod],
+            'movimientos' => $movimientosPorProd[$procodKey],
         ];
     }
 
