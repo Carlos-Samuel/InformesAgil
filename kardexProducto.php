@@ -124,38 +124,22 @@
                         </div>
                     </div>
 
-                    <!-- 4 variantes de Existencia Total (diagnóstico) -->
+                    <!-- Regla aplicada (informativo) -->
                     <div class="card shadow mb-3">
                         <div class="card-header py-2" style="font-size:0.9rem;">
                             <i class="fa fa-balance-scale me-1"></i>
-                            Existencia Total según regla aplicada
-                            <small class="text-muted">(para comparar con el informe consolidado)</small>
+                            Regla aplicada
                         </div>
                         <div class="card-body p-2">
-                            <div class="table-responsive">
-                                <table class="table table-sm table-bordered mb-0" style="font-size:0.88rem;">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Regla</th>
-                                            <th class="text-end">Respeta TMINOAFECT · desc. SUMAN</th>
-                                            <th class="text-end">Respeta TMINOAFECT · desc. RESTAN</th>
-                                            <th class="text-end">Ignora TMINOAFECT · desc. SUMAN</th>
-                                            <th class="text-end">Ignora TMINOAFECT · desc. RESTAN</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td><strong>Existencia</strong></td>
-                                            <td class="text-end" id="existNoafSuma">—</td>
-                                            <td class="text-end" id="existNoafResta">—</td>
-                                            <td class="text-end" id="existSinNoafSuma">—</td>
-                                            <td class="text-end" id="existSinNoafResta">—</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                            <div style="font-size:0.88rem;">
+                                <strong>Ignora TMINOAFECT · desc. RESTAN</strong>
+                                <div class="text-muted mt-1" style="font-size:0.82rem;">
+                                    Todos los movimientos se suman o restan según <code>TMITIPO</code>
+                                    (se ignora el campo <code>TMINOAFECT</code>). Los <code>KARTIPO</code>
+                                    no registrados en <code>TIPMOVINV</code> se tratan como <strong>resta</strong>.
+                                </div>
                             </div>
                             <div class="text-muted mt-2" style="font-size:0.78rem;">
-                                Registros con <code>TMINOAFECT=true</code>: <strong id="dbgNoAfecta">0</strong> &nbsp;|&nbsp;
                                 KARTIPOS no presentes en TIPMOVINV: <strong id="dbgDesconocidos">—</strong>
                             </div>
                         </div>
@@ -183,8 +167,6 @@
             $('#existenciaValor').text('…');
             $('#totalMovimientos').text('…');
             $('#totalMovimientosBtn').text('0');
-            $('#existNoafSuma, #existNoafResta, #existSinNoafSuma, #existSinNoafResta').text('—');
-            $('#dbgNoAfecta').text('0');
             $('#dbgDesconocidos').text('—');
             $('#btnDescargarCsv').prop('disabled', true);
         }
@@ -218,14 +200,7 @@
                 $('#totalMovimientosBtn').text(totalMov.toLocaleString('es-CO'));
                 $('#existenciaProcod').text(procod.toUpperCase());
 
-                var ex = json.existencias || {};
-                $('#existNoafSuma'    ).text(fmt(ex.con_noafecta_desc_suma));
-                $('#existNoafResta'   ).text(fmt(ex.con_noafecta_desc_resta));
-                $('#existSinNoafSuma' ).text(fmt(ex.sin_noafecta_desc_suma));
-                $('#existSinNoafResta').text(fmt(ex.sin_noafecta_desc_resta));
-
                 var dbg = json.debug || {};
-                $('#dbgNoAfecta').text((dbg.registros_no_afecta || 0).toLocaleString('es-CO'));
                 var desc = dbg.kartipos_desconocidos || {};
                 var keys = Object.keys(desc);
                 $('#dbgDesconocidos').text(

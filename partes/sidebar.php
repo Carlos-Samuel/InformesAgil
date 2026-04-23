@@ -48,14 +48,6 @@
               <span class="menu-title">Kardex Producto</span>
             </a>
           </li>
-          <li class="menu-item">
-            <a href="diagnosticoProducto.php">
-              <span class="menu-icon">
-                <i class="fa fa-stethoscope"></i>
-              </span>
-              <span class="menu-title">Diagnóstico Prod.</span>
-            </a>
-          </li>
           <!--
           <li class="menu-item">
             <a href="tipmovinv.php">

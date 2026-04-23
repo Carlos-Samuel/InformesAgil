@@ -3,14 +3,20 @@
  * Endpoint para el informe de Kardex por Producto.
  *
  * Modos:
- *   - Por defecto (POST/GET sin ?format): devuelve JSON con las 4 variantes
- *     de Existencia Total y diagnóstico — NO se envían los registros.
+ *   - Por defecto (POST/GET sin ?format): devuelve JSON con la Existencia Total
+ *     calculada bajo la regla "Ignora TMINOAFECT · desc. RESTAN" —
+ *     NO se envían los registros individuales.
  *   - ?format=csv : streaming de CSV con TODOS los registros del producto
  *     (KARMOVI.DBF filtrado por PROCOD).
  *
+ * Regla de cálculo:
+ *   - Se IGNORA el campo TMINOAFECT (los movimientos marcados como "no afectan"
+ *     sí se suman/restan).
+ *   - KARTIPO desconocido (no presente en TIPMOVINV) → se RESTA (-1).
+ *
  * Parámetros:
  *   procod  — código de producto (obligatorio)
- *   format  — 'csv' para descarga CSV; cualquier otro valor = JSON con agregados
+ *   format  — 'csv' para descarga CSV; cualquier otro valor = JSON con agregado
  */
 require_once '../EnvLoader.php';
 require_once '../DbfReader.php';
@@ -48,10 +54,10 @@ if ($format === 'csv') {
 
     $out = fopen('php://output', 'w');
 
-    // Cargar mapa de signos desde TIPMOVINV (respetando TMINOAFECT).
-    // El "default" de KARTIPO desconocido se aplica en cada variante de columna.
+    // Cargar mapa de signos desde TIPMOVINV IGNORANDO TMINOAFECT.
+    // El "default" para KARTIPO desconocido se aplica por columna (abajo).
     $pathTipo   = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_TIPMOVINV');
-    $tipoSignos = TipMovInvLoader::loadSignMapVariant($pathTipo, true);
+    $tipoSignos = TipMovInvLoader::loadSignMapVariant($pathTipo, false);
 
     $baseColumns = [
         'KARID', 'PROCOD', 'KARTIPO', 'KARDOCU', 'PRFCOD', 'SEDE',
@@ -59,11 +65,10 @@ if ($format === 'csv') {
         'KARCANT', 'KARVALOR', 'KARCOSTO',
         'KARCONSE', 'KARESTADO', 'EMPCOD', 'PROUND', 'TMIAUX',
     ];
-    // Dos columnas nuevas con la cantidad con signo aplicado:
-    //   - CANT_DESC_POS: KARTIPO desconocido → asume +1 (suma)
+    // Columna nueva con la cantidad con signo aplicado bajo la regla vigente:
     //   - CANT_DESC_NEG: KARTIPO desconocido → asume -1 (resta)
-    // En ambas, TMINOAFECT=true produce 0.
-    $extraColumns = ['CANT_DESC_POS', 'CANT_DESC_NEG'];
+    //   (se ignora TMINOAFECT; sólo cuenta TMITIPO)
+    $extraColumns = ['CANT_DESC_NEG'];
     fputcsv($out, array_merge($baseColumns, $extraColumns));
 
     $reader     = new DbfReader($pathKar, 'CP1252');
@@ -78,14 +83,12 @@ if ($format === 'csv') {
             else                     $line[] = $val;
         }
 
-        // Calcular las dos columnas con cantidad signada
+        // Calcular la columna con cantidad signada
         $cant    = (float)($row['KARCANT'] ?? 0);
         $kartipo = trim((string)($row['KARTIPO'] ?? ''));
 
-        $signPos = $tipoSignos[$kartipo] ?? 1;   // desconocidos → suman
         $signNeg = $tipoSignos[$kartipo] ?? -1;  // desconocidos → restan
 
-        $line[] = round($signPos * $cant, 4);
         $line[] = round($signNeg * $cant, 4);
 
         fputcsv($out, $line);
@@ -96,7 +99,7 @@ if ($format === 'csv') {
 }
 
 // ============================================================
-// Modo JSON — sólo agregados (4 variantes de Existencia Total)
+// Modo JSON — Existencia Total (regla: ignora TMINOAFECT, desc. RESTAN)
 // ============================================================
 header('Content-Type: application/json; charset=utf-8');
 
@@ -110,9 +113,8 @@ if ($procod === '') {
 }
 
 try {
-    // --- TIPMOVINV: dos variantes del mapa de signos ---
+    // --- TIPMOVINV: mapa de signos ignorando TMINOAFECT ---
     $pathTipo       = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_TIPMOVINV');
-    $mapConNoAfecta = TipMovInvLoader::loadSignMapVariant($pathTipo, true);
     $mapSinNoAfecta = TipMovInvLoader::loadSignMapVariant($pathTipo, false);
 
     // --- KARMOVI: traer todas las coincidencias ---
@@ -130,51 +132,27 @@ try {
     $allMatched = $reader->findAllByField('PROCOD', $procod);
     $filtered   = count($allMatched);
 
-    // --- Calcular las 4 variantes ---
-    $existNoafSumaDesc    = 0.0; // respeta TMINOAFECT + desconocidos SUMAN
-    $existNoafRestaDesc   = 0.0; // respeta TMINOAFECT + desconocidos RESTAN
-    $existNoNoafSumaDesc  = 0.0; // ignora  TMINOAFECT + desconocidos SUMAN
-    $existNoNoafRestaDesc = 0.0; // ignora  TMINOAFECT + desconocidos RESTAN
-
-    $desconocidos  = [];
-    $totalNoAfecta = 0;
+    // --- Calcular la existencia: ignora TMINOAFECT + desconocidos RESTAN ---
+    $existencia   = 0.0;
+    $desconocidos = [];
 
     foreach ($allMatched as $row) {
         $cant    = (float)($row['KARCANT'] ?? 0);
         $kartipo = trim((string)($row['KARTIPO'] ?? ''));
 
-        $s = $mapConNoAfecta[$kartipo] ?? 1;
-        $existNoafSumaDesc    += $s * $cant;
-
-        $s = $mapConNoAfecta[$kartipo] ?? -1;
-        $existNoafRestaDesc   += $s * $cant;
-
-        $s = $mapSinNoAfecta[$kartipo] ?? 1;
-        $existNoNoafSumaDesc  += $s * $cant;
-
         $s = $mapSinNoAfecta[$kartipo] ?? -1;
-        $existNoNoafRestaDesc += $s * $cant;
+        $existencia += $s * $cant;
 
-        if (!isset($mapConNoAfecta[$kartipo])) {
+        if (!isset($mapSinNoAfecta[$kartipo])) {
             $desconocidos[$kartipo] = ($desconocidos[$kartipo] ?? 0) + 1;
-        } elseif (($mapConNoAfecta[$kartipo] ?? null) === 0) {
-            $totalNoAfecta++;
         }
     }
 
     echo json_encode([
         'recordsFiltered' => $filtered,
-        // Existencia principal (regla oficial: respeta TMINOAFECT, desconocidos suman)
-        'existencia'      => round($existNoafSumaDesc, 4),
-        'existencias' => [
-            'con_noafecta_desc_suma'  => round($existNoafSumaDesc,    4),
-            'con_noafecta_desc_resta' => round($existNoafRestaDesc,   4),
-            'sin_noafecta_desc_suma'  => round($existNoNoafSumaDesc,  4),
-            'sin_noafecta_desc_resta' => round($existNoNoafRestaDesc, 4),
-        ],
+        'existencia'      => round($existencia, 4),
         'debug' => [
             'registros_total'       => $filtered,
-            'registros_no_afecta'   => $totalNoAfecta,
             'kartipos_desconocidos' => $desconocidos,
         ],
     ], JSON_UNESCAPED_UNICODE);
