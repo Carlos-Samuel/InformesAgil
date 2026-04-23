@@ -38,50 +38,15 @@ function agregarFiltroMultiple(&$where, &$params, &$types, $col, $vals)
     }
 }
 
-/**
- * Cachea en memoria la existencia por PROCOD EXACTO,
- * usando exactamente la misma lógica del kardex:
- *   - findAllByField('PROCOD', $procod)
- *   - ignora TMINOAFECT
- *   - KARTIPO desconocido => -1
- */
-function obtenerExistenciaKardexPorProcod(string $procod, array $mapSinNoAfecta, DbfReader $reader): array
+function normalizarProcod($valor): string
 {
-    static $cache = [];
-
-    if (array_key_exists($procod, $cache)) {
-        return $cache[$procod];
-    }
-
-    $allMatched = $reader->findAllByField('PROCOD', $procod);
-    $filtered   = count($allMatched);
-
-    $existencia   = 0.0;
-    $desconocidos = [];
-
-    foreach ($allMatched as $row) {
-        $cant    = (float)($row['KARCANT'] ?? 0);
-        $kartipo = trim((string)($row['KARTIPO'] ?? ''));
-
-        $s = $mapSinNoAfecta[$kartipo] ?? -1;
-        $existencia += $s * $cant;
-
-        if (!isset($mapSinNoAfecta[$kartipo])) {
-            $key = $kartipo === '' ? '(VACIO)' : $kartipo;
-            $desconocidos[$key] = ($desconocidos[$key] ?? 0) + 1;
-        }
-    }
-
-    $cache[$procod] = [
-        'existencia' => round($existencia, 4),
-        'recordsFiltered' => $filtered,
-        'kartipos_desconocidos' => $desconocidos,
-    ];
-
-    return $cache[$procod];
+    return trim((string)$valor);
 }
 
 try {
+    /* ============================================================
+       PASO 1 — Consulta principal MySQL SIN existencias
+       ============================================================ */
     $whereVentas  = "WHERE ve.vtafec BETWEEN ? AND ?";
     $paramsVentas = [$fechaInicio, $fechaFin];
     $typesVentas  = "ss";
@@ -153,16 +118,44 @@ try {
     $result = $query->get_result();
 
     $data = [];
+    $procodsNecesarios = [];
+
     while ($row = $result->fetch_assoc()) {
+        $procod = normalizarProcod($row['codigo_producto'] ?? '');
+
         $row['cantidad'] = (float)($row['cantidad'] ?? 0);
         $row['valor_unitario'] = (float)($row['valor_unitario'] ?? 0);
         $row['subtotal'] = (float)($row['subtotal'] ?? 0);
         $row['existencias'] = 0.0;
+        $row['_procod_match'] = $procod;
+
+        if ($procod !== '') {
+            $procodsNecesarios[$procod] = true;
+        }
+
         $data[] = $row;
     }
 
     $query->close();
 
+    if (empty($data)) {
+        echo json_encode([
+            'data' => [],
+            'debug' => [
+                'fecha_inicio' => $fechaInicio,
+                'fecha_fin' => $fechaFin,
+                'productos_resultado' => 0
+            ]
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    /* ============================================================
+       PASO 2 — Cargar mapa de signos TIPMOVINV
+       Misma regla del kardex:
+       - ignora TMINOAFECT
+       - KARTIPO desconocido resta (-1)
+       ============================================================ */
     $pathTipo = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_TIPMOVINV');
     if (!$pathTipo || !file_exists($pathTipo)) {
         echo json_encode([
@@ -172,37 +165,71 @@ try {
         exit;
     }
 
-    $pathKar = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_KARMOVI');
-    if (!$pathKar || !file_exists($pathKar)) {
+    $tipoSignos = TipMovInvLoader::loadSignMapVariant($pathTipo, false);
+
+    /* ============================================================
+       PASO 3 — Leer KARMOVI UNA sola vez y acumular en arreglo
+       SOLO para los PROCOD que realmente salen en el informe
+       ============================================================ */
+    $pathKarmovi = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_KARMOVI');
+    if (!$pathKarmovi || !file_exists($pathKarmovi)) {
         echo json_encode([
             'data' => [],
-            'error' => 'Archivo KARMOVI.DBF no encontrado. Verifique la ruta en el archivo .env'
+            'error' => 'KARMOVI.DBF no encontrado. Verifique el .env'
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
-    // Misma regla del kardex:
-    // ignora TMINOAFECT y desconocidos restan
-    $mapSinNoAfecta = TipMovInvLoader::loadSignMapVariant($pathTipo, false);
-    $reader = new DbfReader($pathKar, 'CP1252');
+    $batchSize = 2000;
+    $reader = new DbfReader($pathKarmovi, 'CP1252');
+    $karTotal = $reader->getNumRecords();
 
+    $existencias = [];
     $debugExistencias = [];
+    $kartiposDesconocidos = [];
 
-    foreach ($data as &$row) {
-        $procod = trim((string)($row['codigo_producto'] ?? ''));
-
-        if ($procod === '') {
-            $row['existencias'] = 0.0;
-            continue;
-        }
-
-        $calc = obtenerExistenciaKardexPorProcod($procod, $mapSinNoAfecta, $reader);
-        $row['existencias'] = (float)$calc['existencia'];
-
+    foreach (array_keys($procodsNecesarios) as $procod) {
+        $existencias[$procod] = 0.0;
         $debugExistencias[$procod] = [
-            'recordsFiltered' => $calc['recordsFiltered'],
-            'kartipos_desconocidos' => $calc['kartipos_desconocidos'],
+            'recordsFiltered' => 0,
+            'kartipos_desconocidos' => []
         ];
+    }
+
+    for ($i = 0; $i < $karTotal; $i += $batchSize) {
+        $rows = $reader->readRecords($i, min($batchSize, $karTotal - $i));
+
+        foreach ($rows as $row) {
+            $procodDbf = normalizarProcod($row['PROCOD'] ?? '');
+
+            if ($procodDbf === '' || !isset($procodsNecesarios[$procodDbf])) {
+                continue;
+            }
+
+            $cant = (float)($row['KARCANT'] ?? 0);
+            $kartipo = trim((string)($row['KARTIPO'] ?? ''));
+
+            $sign = $tipoSignos[$kartipo] ?? -1;
+            $existencias[$procodDbf] += ($sign * $cant);
+            $debugExistencias[$procodDbf]['recordsFiltered']++;
+
+            if (!isset($tipoSignos[$kartipo])) {
+                $key = $kartipo === '' ? '(VACIO)' : $kartipo;
+                $debugExistencias[$procodDbf]['kartipos_desconocidos'][$key] =
+                    ($debugExistencias[$procodDbf]['kartipos_desconocidos'][$key] ?? 0) + 1;
+
+                $kartiposDesconocidos[$key] = ($kartiposDesconocidos[$key] ?? 0) + 1;
+            }
+        }
+    }
+
+    /* ============================================================
+       PASO 4 — Agregar existencias al arreglo final
+       ============================================================ */
+    foreach ($data as &$row) {
+        $procod = $row['_procod_match'] ?? '';
+        $row['existencias'] = round((float)($existencias[$procod] ?? 0), 4);
+        unset($row['_procod_match']);
     }
     unset($row);
 
@@ -212,8 +239,10 @@ try {
             'fecha_inicio' => $fechaInicio,
             'fecha_fin' => $fechaFin,
             'productos_resultado' => count($data),
-            'existencias_calculadas_como_kardex' => true,
-            'detalle_por_procod' => $debugExistencias,
+            'productos_buscados_en_karmovi' => count($procodsNecesarios),
+            'registros_karmovi' => $karTotal,
+            'kartipos_desconocidos_global' => $kartiposDesconocidos,
+            'detalle_por_procod' => $debugExistencias
         ]
     ], JSON_UNESCAPED_UNICODE);
 
