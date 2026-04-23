@@ -48,6 +48,14 @@
               <span class="menu-title">Kardex Producto</span>
             </a>
           </li>
+          <li class="menu-item">
+            <a href="existenciasTodas.php">
+              <span class="menu-icon">
+                <i class="fa fa-boxes-stacking"></i>
+              </span>
+              <span class="menu-title">Existencias Todas</span>
+            </a>
+          </li>
           <!--
           <li class="menu-item">
             <a href="tipmovinv.php">
