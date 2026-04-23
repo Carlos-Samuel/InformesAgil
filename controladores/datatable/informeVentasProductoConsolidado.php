@@ -34,10 +34,12 @@ function agregarFiltroMultiple(&$where, &$params, &$types, $col, $vals) {
 /* ============================================================
    PASO 1 — Leer TIPMOVINV desde el DBF
    Construye el mapa [TMICOD => signo] usando EXACTAMENTE la misma
-   regla que el informe de Kardex (TipMovInvLoader::loadSignMap):
+   regla que el informe de Kardex ("Ignora TMINOAFECT · desc. RESTAN"):
      +1 → suma    (TMITIPO = '+')
      -1 → resta   (TMITIPO = '-')
-      0 → no afecta inventario (TMINOAFECT = true)
+   Se IGNORA el campo TMINOAFECT (los movimientos marcados como
+   "no afectan" sí se suman o restan según TMITIPO). Los KARTIPO
+   que no existan en TIPMOVINV se tratan como resta (-1).
    ============================================================ */
 $batchSize     = 2000;
 $pathTipMovInv = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_TIPMOVINV');
@@ -46,13 +48,13 @@ if (!$pathTipMovInv || !file_exists($pathTipMovInv)) {
     exit;
 }
 
-$tipoSignos = TipMovInvLoader::loadSignMap($pathTipMovInv, $batchSize);
+$tipoSignos = TipMovInvLoader::loadSignMapVariant($pathTipMovInv, false, $batchSize);
 
 /* ============================================================
    PASO 2 — Escanear KARMOVI desde el DBF en batches
    Acumula existencias por PROCOD aplicando el signo obtenido en
-   el PASO 1 (misma regla que el Kardex: respeta TMINOAFECT y
-   asume +1 si KARTIPO no está en TIPMOVINV).
+   el PASO 1 (misma regla que el Kardex: ignora TMINOAFECT y los
+   KARTIPO no presentes en TIPMOVINV se tratan como resta -1).
 
    Nota de rendimiento: este archivo tiene ~638 000 registros (~187 MB).
    El escaneo completo tarda entre 5 y 20 segundos según el disco.
@@ -76,8 +78,10 @@ for ($i = 0; $i < $karTotal; $i += $batchSize) {
         $procod = strtoupper(trim($row['PROCOD'] ?? ''));
         if ($procod === '') continue;
 
-        $sign = TipMovInvLoader::signFor($tipoSignos, $row);
-        if ($sign === 0) continue;  // movimiento no afecta inventario
+        // Misma regla que el kardex: se ignora TMINOAFECT (el mapa ya no
+        // contiene signos 0) y los KARTIPO desconocidos restan (-1).
+        $kartipo = trim((string)($row['KARTIPO'] ?? ''));
+        $sign    = $tipoSignos[$kartipo] ?? -1;
 
         $cant = (float)($row['KARCANT'] ?? 0);
 
