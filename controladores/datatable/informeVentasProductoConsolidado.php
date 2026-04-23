@@ -38,101 +38,50 @@ function agregarFiltroMultiple(&$where, &$params, &$types, $col, $vals)
     }
 }
 
-function normalizarCodigoProducto($codigo)
-{
-    return strtoupper(trim((string)$codigo));
-}
-
 /**
- * Cache en memoria por request.
- * Estructura:
- * [
- *   'existencias' => ['PROCOD' => float],
- *   'debug' => [
- *      'kartipos_desconocidos' => ['XX' => 15],
- *      'registros_karmovi' => int,
- *      'productos_con_existencia' => int
- *   ]
- * ]
+ * Cachea en memoria la existencia por PROCOD EXACTO,
+ * usando exactamente la misma lógica del kardex:
+ *   - findAllByField('PROCOD', $procod)
+ *   - ignora TMINOAFECT
+ *   - KARTIPO desconocido => -1
  */
-function construirCacheExistenciasDesdeDbf()
+function obtenerExistenciaKardexPorProcod(string $procod, array $mapSinNoAfecta, DbfReader $reader): array
 {
-    static $cache = null;
+    static $cache = [];
 
-    if ($cache !== null) {
-        return $cache;
+    if (array_key_exists($procod, $cache)) {
+        return $cache[$procod];
     }
 
-    $batchSize = 2000;
+    $allMatched = $reader->findAllByField('PROCOD', $procod);
+    $filtered   = count($allMatched);
 
-    $pathTipMovInv = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_TIPMOVINV');
-    if (!$pathTipMovInv || !file_exists($pathTipMovInv)) {
-        throw new RuntimeException(
-            'TIPMOVINV.DBF no encontrado. Verifique el .env. Path buscado: ' . $pathTipMovInv
-        );
-    }
-
-    $pathKarmovi = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_KARMOVI');
-    if (!$pathKarmovi || !file_exists($pathKarmovi)) {
-        throw new RuntimeException('KARMOVI.DBF no encontrado. Verifique el .env');
-    }
-
-    // MISMA regla del kardex:
-    // - ignora TMINOAFECT
-    // - KARTIPO desconocido => resta (-1)
-    $tipoSignos = TipMovInvLoader::loadSignMapVariant($pathTipMovInv, false, $batchSize);
-
-    $karReader = new DbfReader($pathKarmovi, 'CP1252');
-    $karTotal  = $karReader->getNumRecords();
-
-    $existencias = [];
+    $existencia   = 0.0;
     $desconocidos = [];
 
-    for ($i = 0; $i < $karTotal; $i += $batchSize) {
-        $rows = $karReader->readRecords($i, min($batchSize, $karTotal - $i));
+    foreach ($allMatched as $row) {
+        $cant    = (float)($row['KARCANT'] ?? 0);
+        $kartipo = trim((string)($row['KARTIPO'] ?? ''));
 
-        foreach ($rows as $row) {
-            $procod = normalizarCodigoProducto($row['PROCOD'] ?? '');
-            if ($procod === '') {
-                continue;
-            }
+        $s = $mapSinNoAfecta[$kartipo] ?? -1;
+        $existencia += $s * $cant;
 
-            $kartipo = trim((string)($row['KARTIPO'] ?? ''));
-            $cant    = (float)($row['KARCANT'] ?? 0);
-
-            $sign = $tipoSignos[$kartipo] ?? -1;
-
-            if (!isset($existencias[$procod])) {
-                $existencias[$procod] = 0.0;
-            }
-
-            $existencias[$procod] += ($sign * $cant);
-
-            if (!isset($tipoSignos[$kartipo])) {
-                $key = $kartipo === '' ? '(VACIO)' : $kartipo;
-                $desconocidos[$key] = ($desconocidos[$key] ?? 0) + 1;
-            }
+        if (!isset($mapSinNoAfecta[$kartipo])) {
+            $key = $kartipo === '' ? '(VACIO)' : $kartipo;
+            $desconocidos[$key] = ($desconocidos[$key] ?? 0) + 1;
         }
     }
 
-    $cache = [
-        'existencias' => $existencias,
-        'debug' => [
-            'kartipos_desconocidos' => $desconocidos,
-            'registros_karmovi' => $karTotal,
-            'productos_con_existencia' => count($existencias),
-        ],
+    $cache[$procod] = [
+        'existencia' => round($existencia, 4),
+        'recordsFiltered' => $filtered,
+        'kartipos_desconocidos' => $desconocidos,
     ];
 
-    return $cache;
+    return $cache[$procod];
 }
 
 try {
-    /* ============================================================
-       PASO 1 — Consulta principal SOLO contra MySQL
-       Aquí ya NO se hace JOIN contra tabla temporal de existencias.
-       Solo se trae el consolidado comercial.
-       ============================================================ */
     $whereVentas  = "WHERE ve.vtafec BETWEEN ? AND ?";
     $paramsVentas = [$fechaInicio, $fechaFin];
     $typesVentas  = "ss";
@@ -175,6 +124,7 @@ try {
 
         $whereVentas
         AND prod.procod IS NOT NULL
+        AND TRIM(prod.procod) <> ''
 
         GROUP BY
             prod.proid,
@@ -203,43 +153,56 @@ try {
     $result = $query->get_result();
 
     $data = [];
-    $codigosNecesarios = [];
-
     while ($row = $result->fetch_assoc()) {
-        $codigoNormalizado = normalizarCodigoProducto($row['codigo_producto'] ?? '');
-
         $row['cantidad'] = (float)($row['cantidad'] ?? 0);
         $row['valor_unitario'] = (float)($row['valor_unitario'] ?? 0);
         $row['subtotal'] = (float)($row['subtotal'] ?? 0);
-
-        $row['_codigo_normalizado'] = $codigoNormalizado;
         $row['existencias'] = 0.0;
-
-        if ($codigoNormalizado !== '') {
-            $codigosNecesarios[$codigoNormalizado] = true;
-        }
-
         $data[] = $row;
     }
 
     $query->close();
 
-    /* ============================================================
-       PASO 2 — Construir cache de existencias en memoria
-       Se recorre KARMOVI una sola vez por request.
-       NO se guarda en MySQL.
-       ============================================================ */
-    $cacheExistencias = construirCacheExistenciasDesdeDbf();
-    $mapExistencias   = $cacheExistencias['existencias'];
+    $pathTipo = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_TIPMOVINV');
+    if (!$pathTipo || !file_exists($pathTipo)) {
+        echo json_encode([
+            'data' => [],
+            'error' => 'TIPMOVINV.DBF no encontrado. Verifique el .env. Path buscado: ' . $pathTipo
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
 
-    /* ============================================================
-       PASO 3 — Agregar existencias al arreglo final antes de responder
-       ============================================================ */
+    $pathKar = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_KARMOVI');
+    if (!$pathKar || !file_exists($pathKar)) {
+        echo json_encode([
+            'data' => [],
+            'error' => 'Archivo KARMOVI.DBF no encontrado. Verifique la ruta en el archivo .env'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // Misma regla del kardex:
+    // ignora TMINOAFECT y desconocidos restan
+    $mapSinNoAfecta = TipMovInvLoader::loadSignMapVariant($pathTipo, false);
+    $reader = new DbfReader($pathKar, 'CP1252');
+
+    $debugExistencias = [];
+
     foreach ($data as &$row) {
-        $codigoNormalizado = $row['_codigo_normalizado'] ?? '';
-        $row['existencias'] = (float)($mapExistencias[$codigoNormalizado] ?? 0);
+        $procod = trim((string)($row['codigo_producto'] ?? ''));
 
-        unset($row['_codigo_normalizado']);
+        if ($procod === '') {
+            $row['existencias'] = 0.0;
+            continue;
+        }
+
+        $calc = obtenerExistenciaKardexPorProcod($procod, $mapSinNoAfecta, $reader);
+        $row['existencias'] = (float)$calc['existencia'];
+
+        $debugExistencias[$procod] = [
+            'recordsFiltered' => $calc['recordsFiltered'],
+            'kartipos_desconocidos' => $calc['kartipos_desconocidos'],
+        ];
     }
     unset($row);
 
@@ -249,9 +212,8 @@ try {
             'fecha_inicio' => $fechaInicio,
             'fecha_fin' => $fechaFin,
             'productos_resultado' => count($data),
-            'productos_en_cache_existencias' => $cacheExistencias['debug']['productos_con_existencia'],
-            'registros_karmovi' => $cacheExistencias['debug']['registros_karmovi'],
-            'kartipos_desconocidos' => $cacheExistencias['debug']['kartipos_desconocidos'],
+            'existencias_calculadas_como_kardex' => true,
+            'detalle_por_procod' => $debugExistencias,
         ]
     ], JSON_UNESCAPED_UNICODE);
 
