@@ -232,6 +232,31 @@ class DbfReader {
         return $matched;
     }
 
+    /**
+     * Recorre todos los registros del archivo pasando cada registro activo
+     * al callback proporcionado. No construye ningún array en memoria, por lo
+     * que es adecuado para archivos con cientos de miles de registros.
+     *
+     * @param callable $callback  function(array $row): void
+     */
+    public function scanRecords(callable $callback): void {
+        $fh = $this->openFile();
+        fseek($fh, $this->headerSize);
+
+        for ($i = 0; $i < $this->numRecords; $i++) {
+            $raw = fread($fh, $this->recordSize);
+            if (strlen($raw) < $this->recordSize) break;
+            if ($raw[0] === '*') continue;
+
+            $row = $this->decodeRecord($raw);
+            if ($row !== null) {
+                $callback($row);
+            }
+        }
+
+        fclose($fh);
+    }
+
     // ----------------------------------------------------------------
     // Métodos privados
     // ----------------------------------------------------------------

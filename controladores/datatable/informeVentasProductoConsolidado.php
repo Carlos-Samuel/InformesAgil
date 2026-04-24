@@ -195,15 +195,19 @@ try {
         ];
     }
 
-    // Lectura en un solo escaneo para evitar solapamiento en bordes de batch
-    // cuando hay registros borrados intercalados en el DBF.
-    $allRows = $reader->readRecords(0, $karTotal);
-
-    foreach ($allRows as $row) {
+    // Escaneo en streaming: procesa cada registro activo con un callback
+    // sin construir un array en memoria. Correcto con registros borrados.
+    $reader->scanRecords(function($row) use (
+        &$existencias,
+        &$debugExistencias,
+        &$kartiposDesconocidos,
+        $procodsNecesarios,
+        $tipoSignos
+    ) {
         $procodDbf = normalizarProcod($row['PROCOD'] ?? '');
 
         if ($procodDbf === '' || !isset($procodsNecesarios[$procodDbf])) {
-            continue;
+            return;
         }
 
         $cant    = (float)($row['KARCANT'] ?? 0);
@@ -220,7 +224,7 @@ try {
 
             $kartiposDesconocidos[$key] = ($kartiposDesconocidos[$key] ?? 0) + 1;
         }
-    }
+    });
 
     /* ============================================================
        PASO 4 — Agregar existencias al arreglo final
