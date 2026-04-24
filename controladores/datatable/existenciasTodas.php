@@ -1,32 +1,27 @@
 <?php
 /**
  * Endpoint que calcula las existencias de TODOS los productos presentes
- * en KARMOVI.DBF, usando EXACTAMENTE la misma mecánica de recorrido,
- * agrupación y cálculo que el informe de Kardex por Producto
+ * en KARMOVI.DBF, leyendo el archivo UNA sola vez y acumulando por
+ * PROCOD. Para cada registro aplica EXACTAMENTE el mismo bloque de
+ * suma/resta que usa el informe de Kardex por Producto
  * (kardexProducto.php, rama JSON):
  *
- *   1. Se obtiene la lista de PROCODs distintos presentes en KARMOVI.
- *   2. Para cada PROCOD se ejecuta el mismo bloque que kardexProducto:
- *         $allMatched = $reader->findAllByField('PROCOD', $procod);
- *         foreach ($allMatched as $row) {
- *             $cant    = (float)($row['KARCANT'] ?? 0);
- *             $kartipo = trim((string)($row['KARTIPO'] ?? ''));
- *             $s = $mapSinNoAfecta[$kartipo] ?? -1;
- *             $existencia += $s * $cant;
- *             ...
- *         }
+ *     $cant    = (float)($row['KARCANT'] ?? 0);
+ *     $kartipo = trim((string)($row['KARTIPO'] ?? ''));
+ *     $s = $mapSinNoAfecta[$kartipo] ?? -1;
+ *     $existencia += $s * $cant;
  *
  * Regla de cálculo (idéntica a kardexProducto):
  *   - Se IGNORA el campo TMINOAFECT (los movimientos marcados como
  *     "no afectan" también se suman/restan).
  *   - KARTIPO desconocido (no presente en TIPMOVINV) → se RESTA (-1).
  *
- * NOTA DE RENDIMIENTO: como findAllByField recorre el DBF completo en
- * cada llamada, este endpoint hace N+1 escaneos de KARMOVI (uno para
- * recolectar los PROCODs distintos y uno por cada producto). Para
- * catálogos grandes puede ser notablemente más lento que una sola
- * pasada por lotes; se deja así para que la lógica sea 100 % igual a
- * la del Kardex por Producto.
+ * Agrupación de PROCOD: se usa la misma normalización que
+ * DbfReader::findAllByField (la que emplea el Kardex por Producto),
+ * es decir mb_strtolower(trim(...), 'UTF-8'). Así, si el mismo código
+ * aparece con distinta capitalización en KARMOVI se acumula en una
+ * única fila — exactamente como lo hace el Kardex cuando se consulta
+ * ese código.
  *
  * Respuesta JSON:
  *   {
@@ -78,78 +73,69 @@ try {
         exit;
     }
 
-    $reader = new DbfReader($pathKar, 'CP1252');
-    $total  = $reader->getNumRecords();
+    $reader    = new DbfReader($pathKar, 'CP1252');
+    $total     = $reader->getNumRecords();
+    $batchSize = 5000;
+
+    // Acumuladores por PROCOD normalizado
+    $existencias          = []; // [procodKey => float existencia acumulada]
+    $movimientosPorProd   = []; // [procodKey => int registros sumados]
+    $procodDisplay        = []; // [procodKey => PROCOD tal como se mostrará]
+    $kartiposDesconocidos = []; // [kartipo => cantidad global]
 
     $t0 = microtime(true);
 
     // ------------------------------------------------------------
-    // 3. Recolectar los PROCODs distintos presentes en KARMOVI.
-    //    Se conserva la PRIMERA forma "tal cual" vista (trim) para
-    //    mostrarla al usuario, y se usa como clave de búsqueda el
-    //    PROCOD sin normalizar porque findAllByField ya hace
-    //    mb_strtolower + trim internamente para comparar.
+    // 3. UNA sola pasada por KARMOVI, en lotes.
+    //    Para cada fila se aplica el MISMO bloque de suma/resta
+    //    que usa kardexProducto.php.
     // ------------------------------------------------------------
-    $procodDisplay = []; // [procodKey => PROCOD tal como se mostrará]
-    $batchSize     = 5000;
-
     for ($i = 0; $i < $total; $i += $batchSize) {
         $rows = $reader->readRecords($i, min($batchSize, $total - $i));
+
         foreach ($rows as $row) {
             $procodRaw = trim((string)($row['PROCOD'] ?? ''));
             if ($procodRaw === '') continue;
+
+            // Misma normalización que DbfReader::findAllByField
             $procodKey = mb_strtolower($procodRaw, 'UTF-8');
-            if (!isset($procodDisplay[$procodKey])) {
-                $procodDisplay[$procodKey] = $procodRaw;
-            }
-        }
-    }
 
-    // ------------------------------------------------------------
-    // 4. Para cada PROCOD ejecutar EXACTAMENTE el mismo bloque que
-    //    kardexProducto.php (rama JSON).
-    // ------------------------------------------------------------
-    $salida               = [];
-    $kartiposDesconocidos = []; // acumulado global
-
-    foreach ($procodDisplay as $procodKey => $procod) {
-
-        // --- KARMOVI: traer todas las coincidencias ---
-        $allMatched = $reader->findAllByField('PROCOD', $procod);
-        $filtered   = count($allMatched);
-
-        // --- Calcular la existencia: ignora TMINOAFECT + desconocidos RESTAN ---
-        $existencia   = 0.0;
-        $desconocidos = [];
-
-        foreach ($allMatched as $row) {
+            // --- Bloque idéntico a kardexProducto.php ---
             $cant    = (float)($row['KARCANT'] ?? 0);
             $kartipo = trim((string)($row['KARTIPO'] ?? ''));
 
             $s = $mapSinNoAfecta[$kartipo] ?? -1;
-            $existencia += $s * $cant;
+            // --------------------------------------------
+
+            if (!isset($existencias[$procodKey])) {
+                $existencias[$procodKey]        = 0.0;
+                $movimientosPorProd[$procodKey] = 0;
+                $procodDisplay[$procodKey]      = $procodRaw;
+            }
+            $existencias[$procodKey]        += $s * $cant;
+            $movimientosPorProd[$procodKey] += 1;
 
             if (!isset($mapSinNoAfecta[$kartipo])) {
-                $desconocidos[$kartipo] = ($desconocidos[$kartipo] ?? 0) + 1;
+                $key = $kartipo === '' ? '(VACIO)' : $kartipo;
+                $kartiposDesconocidos[$key] =
+                    ($kartiposDesconocidos[$key] ?? 0) + 1;
             }
-        }
-
-        $salida[] = [
-            'procod'      => $procod,
-            'existencia'  => round($existencia, 4),
-            'movimientos' => $filtered,
-        ];
-
-        // Acumular desconocidos a nivel global para el debug
-        foreach ($desconocidos as $kt => $n) {
-            $key = $kt === '' ? '(VACIO)' : $kt;
-            $kartiposDesconocidos[$key] = ($kartiposDesconocidos[$key] ?? 0) + $n;
         }
     }
 
     // ------------------------------------------------------------
-    // 5. Ordenar ASC por PROCOD (orden natural, maneja "9" < "10")
+    // 4. Pasar a arreglo plano y ordenar ASC por PROCOD
+    //    (orden natural: "9" < "10")
     // ------------------------------------------------------------
+    $salida = [];
+    foreach ($existencias as $procodKey => $valor) {
+        $salida[] = [
+            'procod'      => $procodDisplay[$procodKey],
+            'existencia'  => round($valor, 4),
+            'movimientos' => $movimientosPorProd[$procodKey],
+        ];
+    }
+
     usort($salida, function ($a, $b) {
         return strnatcasecmp($a['procod'], $b['procod']);
     });
