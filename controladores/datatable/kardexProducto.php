@@ -1,23 +1,4 @@
 <?php
-/**
- * Endpoint para el informe de Kardex por Producto.
- *
- * Modos:
- *   - Por defecto (POST/GET sin ?format): devuelve JSON con la Existencia Total
- *     calculada bajo la regla "Ignora TMINOAFECT · desc. RESTAN" —
- *     NO se envían los registros individuales.
- *   - ?format=csv : streaming de CSV con TODOS los registros del producto
- *     (KARMOVI.DBF filtrado por PROCOD).
- *
- * Regla de cálculo:
- *   - Se IGNORA el campo TMINOAFECT (los movimientos marcados como "no afectan"
- *     sí se suman/restan).
- *   - KARTIPO desconocido (no presente en TIPMOVINV) → se RESTA (-1).
- *
- * Parámetros:
- *   procod  — código de producto (obligatorio)
- *   format  — 'csv' para descarga CSV; cualquier otro valor = JSON con agregado
- */
 require_once '../EnvLoader.php';
 require_once '../DbfReader.php';
 require_once '../TipMovInvLoader.php';
@@ -25,9 +6,6 @@ require_once '../TipMovInvLoader.php';
 $format = strtolower(trim($_REQUEST['format'] ?? ''));
 $procod = trim($_REQUEST['procod'] ?? '');
 
-// ============================================================
-// Modo CSV — descarga de TODOS los registros del producto
-// ============================================================
 if ($format === 'csv') {
     if ($procod === '') {
         http_response_code(400);

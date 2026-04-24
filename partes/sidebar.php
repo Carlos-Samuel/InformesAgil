@@ -56,6 +56,14 @@
               <span class="menu-title">Existencias Todas</span>
             </a>
           </li>
+          <li class="menu-item">
+            <a href="kardexCompleto.php">
+              <span class="menu-icon">
+                <i class="fa fa-table"></i>
+              </span>
+              <span class="menu-title">Kardex Completo</span>
+            </a>
+          </li>
           <!--
           <li class="menu-item">
             <a href="tipmovinv.php">
