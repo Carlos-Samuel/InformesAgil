@@ -180,7 +180,6 @@ try {
         exit;
     }
 
-    $batchSize = 2000;
     $reader = new DbfReader($pathKarmovi, 'CP1252');
     $karTotal = $reader->getNumRecords();
 
@@ -196,30 +195,30 @@ try {
         ];
     }
 
-    for ($i = 0; $i < $karTotal; $i += $batchSize) {
-        $rows = $reader->readRecords($i, min($batchSize, $karTotal - $i));
+    // Lectura en un solo escaneo para evitar solapamiento en bordes de batch
+    // cuando hay registros borrados intercalados en el DBF.
+    $allRows = $reader->readRecords(0, $karTotal);
 
-        foreach ($rows as $row) {
-            $procodDbf = normalizarProcod($row['PROCOD'] ?? '');
+    foreach ($allRows as $row) {
+        $procodDbf = normalizarProcod($row['PROCOD'] ?? '');
 
-            if ($procodDbf === '' || !isset($procodsNecesarios[$procodDbf])) {
-                continue;
-            }
+        if ($procodDbf === '' || !isset($procodsNecesarios[$procodDbf])) {
+            continue;
+        }
 
-            $cant = (float)($row['KARCANT'] ?? 0);
-            $kartipo = trim((string)($row['KARTIPO'] ?? ''));
+        $cant    = (float)($row['KARCANT'] ?? 0);
+        $kartipo = trim((string)($row['KARTIPO'] ?? ''));
 
-            $sign = $tipoSignos[$kartipo] ?? -1;
-            $existencias[$procodDbf] += ($sign * $cant);
-            $debugExistencias[$procodDbf]['recordsFiltered']++;
+        $sign = $tipoSignos[$kartipo] ?? -1;
+        $existencias[$procodDbf] += ($sign * $cant);
+        $debugExistencias[$procodDbf]['recordsFiltered']++;
 
-            if (!isset($tipoSignos[$kartipo])) {
-                $key = $kartipo === '' ? '(VACIO)' : $kartipo;
-                $debugExistencias[$procodDbf]['kartipos_desconocidos'][$key] =
-                    ($debugExistencias[$procodDbf]['kartipos_desconocidos'][$key] ?? 0) + 1;
+        if (!isset($tipoSignos[$kartipo])) {
+            $key = $kartipo === '' ? '(VACIO)' : $kartipo;
+            $debugExistencias[$procodDbf]['kartipos_desconocidos'][$key] =
+                ($debugExistencias[$procodDbf]['kartipos_desconocidos'][$key] ?? 0) + 1;
 
-                $kartiposDesconocidos[$key] = ($kartiposDesconocidos[$key] ?? 0) + 1;
-            }
+            $kartiposDesconocidos[$key] = ($kartiposDesconocidos[$key] ?? 0) + 1;
         }
     }
 
