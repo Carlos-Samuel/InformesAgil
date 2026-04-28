@@ -43,6 +43,45 @@ function normalizarProcod($valor): string
     return trim((string)$valor);
 }
 
+/* ============================================================
+   HELPER — Valida que KARFECHA esté dentro del rango pedido.
+
+   DbfReader puede devolver el campo T como:
+     · objeto DateTime / DateTimeImmutable
+     · string 'YYYY-MM-DD' o 'YYYY-MM-DD HH:MM:SS'
+     · string 'YYYYMMDD'
+   Si no se puede interpretar la fecha se descarta el registro
+   (comportamiento conservador; cámbialo a `return true` si
+   prefieres incluir los registros con fecha ilegible).
+   ============================================================ */
+function esRegistroEnRango(array $row, string $fechaInicio, string $fechaFin): bool
+{
+    $karfecha = $row['KARFECHA'] ?? null;
+
+    if ($karfecha === null || $karfecha === '') {
+        return false;
+    }
+
+    // Caso 1: ya es un objeto DateTime / DateTimeImmutable
+    if ($karfecha instanceof \DateTimeInterface) {
+        $fechaReg = $karfecha->format('Y-m-d');
+    }
+    // Caso 2: string con separadores  →  '2024-03-15' o '2024-03-15 06:00:00'
+    elseif (is_string($karfecha) && preg_match('/^(\d{4}-\d{2}-\d{2})/', $karfecha, $m)) {
+        $fechaReg = $m[1];
+    }
+    // Caso 3: string compacto  →  '20240315'
+    elseif (is_string($karfecha) && preg_match('/^(\d{4})(\d{2})(\d{2})/', $karfecha, $m)) {
+        $fechaReg = "{$m[1]}-{$m[2]}-{$m[3]}";
+    }
+    else {
+        // Formato desconocido: descartar
+        return false;
+    }
+
+    return $fechaReg >= $fechaInicio && $fechaReg <= $fechaFin;
+}
+
 try {
     /* ============================================================
        PASO 1 — Consulta principal MySQL SIN existencias
@@ -202,13 +241,21 @@ try {
         &$debugExistencias,
         &$kartiposDesconocidos,
         $procodsNecesarios,
-        $tipoSignos
+        $tipoSignos,
+        $fechaInicio,   // ← agregar al use
+        $fechaFin       // ← agregar al use
     ) {
         $procodDbf = normalizarProcod($row['PROCOD'] ?? '');
 
         if ($procodDbf === '' || !isset($procodsNecesarios[$procodDbf])) {
             return;
         }
+
+        // ── NUEVO: filtrar por rango de fecha ──────────────────────
+        if (!esRegistroEnRango($row, $fechaInicio, $fechaFin)) {
+            return;
+        }
+        // ──────────────────────────────────────────────────────────
 
         $cant    = (float)($row['KARCANT'] ?? 0);
         $kartipo = trim((string)($row['KARTIPO'] ?? ''));
