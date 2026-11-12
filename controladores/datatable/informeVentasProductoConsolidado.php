@@ -43,6 +43,45 @@ function normalizarProcod($valor): string
     return trim((string)$valor);
 }
 
+/* ============================================================
+   HELPER — Valida que KARFECHA esté dentro del rango pedido.
+
+   DbfReader puede devolver el campo T como:
+     · objeto DateTime / DateTimeImmutable
+     · string 'YYYY-MM-DD' o 'YYYY-MM-DD HH:MM:SS'
+     · string 'YYYYMMDD'
+   Si no se puede interpretar la fecha se descarta el registro
+   (comportamiento conservador; cámbialo a `return true` si
+   prefieres incluir los registros con fecha ilegible).
+   ============================================================ */
+function esRegistroEnRango(array $row, string $fechaInicio, string $fechaFin): bool
+{
+    $karfecha = $row['KARFECHA'] ?? null;
+
+    if ($karfecha === null || $karfecha === '') {
+        return false;
+    }
+
+    // Caso 1: ya es un objeto DateTime / DateTimeImmutable
+    if ($karfecha instanceof \DateTimeInterface) {
+        $fechaReg = $karfecha->format('Y-m-d');
+    }
+    // Caso 2: string con separadores  →  '2024-03-15' o '2024-03-15 06:00:00'
+    elseif (is_string($karfecha) && preg_match('/^(\d{4}-\d{2}-\d{2})/', $karfecha, $m)) {
+        $fechaReg = $m[1];
+    }
+    // Caso 3: string compacto  →  '20240315'
+    elseif (is_string($karfecha) && preg_match('/^(\d{4})(\d{2})(\d{2})/', $karfecha, $m)) {
+        $fechaReg = "{$m[1]}-{$m[2]}-{$m[3]}";
+    }
+    else {
+        // Formato desconocido: descartar
+        return false;
+    }
+
+    return $fechaReg >= $fechaInicio && $fechaReg <= $fechaFin;
+}
+
 try {
     /* ============================================================
        PASO 1 — Consulta principal MySQL SIN existencias
@@ -169,7 +208,9 @@ try {
 
     /* ============================================================
        PASO 3 — Leer KARMOVI UNA sola vez y acumular en arreglo
-       SOLO para los PROCOD que realmente salen en el informe
+       SOLO para los PROCOD que realmente salen en el informe.
+       Se acumulan TODOS los movimientos con KARFECHA <= fechaFin
+       (sin límite inferior) para obtener el saldo real en bodega.
        ============================================================ */
     $pathKarmovi = EnvLoader::resolveFileInDir('DBF_DIR', 'DBF_KARMOVI');
     if (!$pathKarmovi || !file_exists($pathKarmovi)) {
@@ -197,17 +238,40 @@ try {
 
     // Escaneo en streaming: procesa cada registro activo con un callback
     // sin construir un array en memoria. Correcto con registros borrados.
+    //
+    // Las existencias son el saldo acumulado de TODOS los movimientos
+    // hasta fechaFin (sin límite inferior). Filtrar por fechaInicio
+    // eliminaría el stock previo al período y produciría valores negativos.
     $reader->scanRecords(function($row) use (
         &$existencias,
         &$debugExistencias,
         &$kartiposDesconocidos,
         $procodsNecesarios,
-        $tipoSignos
+        $tipoSignos,
+        $fechaFin
     ) {
         $procodDbf = normalizarProcod($row['PROCOD'] ?? '');
 
         if ($procodDbf === '' || !isset($procodsNecesarios[$procodDbf])) {
             return;
+        }
+
+        // Incluir todos los movimientos HASTA fechaFin (sin límite inferior).
+        // Así se obtiene el saldo real en bodega al cierre del período.
+        $karfecha = $row['KARFECHA'] ?? null;
+        if ($karfecha !== null && $karfecha !== '') {
+            if ($karfecha instanceof \DateTimeInterface) {
+                $fechaReg = $karfecha->format('Y-m-d');
+            } elseif (is_string($karfecha) && preg_match('/^(\d{4}-\d{2}-\d{2})/', $karfecha, $m)) {
+                $fechaReg = $m[1];
+            } elseif (is_string($karfecha) && preg_match('/^(\d{4})(\d{2})(\d{2})/', $karfecha, $m)) {
+                $fechaReg = "{$m[1]}-{$m[2]}-{$m[3]}";
+            } else {
+                return; // Fecha ilegible: descartar
+            }
+            if ($fechaReg > $fechaFin) {
+                return; // Movimiento posterior al período: no afecta existencias
+            }
         }
 
         $cant    = (float)($row['KARCANT'] ?? 0);
