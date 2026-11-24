@@ -1,6 +1,7 @@
 <?php
 
 require_once '../Connection.php';
+require_once '../Devoluciones.php';
 require_once realpath(__DIR__ . '/../../vendor/autoload.php');
 header('Content-Type: application/json');
 
@@ -9,12 +10,16 @@ try {
 
     // Obtener los últimos 3 años
     $stmt = $con->prepare("
-        SELECT 
-            YEAR(vtafec) AS anio,
-            MONTH(vtafec) AS mes,
-            SUM(vtasubtot) AS total
-        FROM ventas
-        WHERE vtafec >= DATE_SUB(CURDATE(), INTERVAL 3 YEAR)
+        SELECT
+            YEAR(fecha) AS anio,
+            MONTH(fecha) AS mes,
+            SUM(valor) AS total
+        FROM (
+            SELECT vtafec AS fecha, vtasubtot AS valor FROM ventas
+            UNION ALL
+            SELECT d.devfec, -d.devsubt FROM tbl_devolucion AS d WHERE " . DEV_CONDICION . "
+        ) AS t
+        WHERE fecha >= DATE_SUB(CURDATE(), INTERVAL 3 YEAR)
         GROUP BY anio, mes
         ORDER BY anio, mes
     ");

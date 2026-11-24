@@ -10,3 +10,7 @@
 #tablaInforme th, #tablaInforme td {
   white-space: nowrap;
 }
+
+#tablaInforme tr.fila-devolucion td {
+  color: #dc3545;
+}

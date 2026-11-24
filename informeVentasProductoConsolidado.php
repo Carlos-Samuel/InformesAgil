@@ -56,7 +56,9 @@
                     </form>
                 </div>
                 <div id="totalesVisual" class="mt-2 text-end pe-3 fs-6 text-primary fw-bold" style="display:none;">
-                    <div>Total Cantidad: <span id="totalCantidad">0</span></div>
+                    <div>Total Cantidad Vendida: <span id="totalVendida">0</span></div>
+                    <div>Total Cantidad Devuelta: <span id="totalDevuelta">0</span></div>
+                    <div>Total Cantidad Neta: <span id="totalCantidad">0</span></div>
                     <div>Total Subtotal: <span id="totalSubtotal">0</span></div>
                     <div>Total Existencias: <span id="totalExistencias">0</span></div>
                 </div>
@@ -67,7 +69,9 @@
                                 <th>CodProd</th>
                                 <th>Registro ICA</th>
                                 <th>Producto</th>
-                                <th>Cantidad</th>
+                                <th>Cant. Vendida</th>
+                                <th>Cant. Devuelta</th>
+                                <th>Cantidad Neta</th>
                                 <th>Vlr Unitario</th>
                                 <th>Subtotal</th>
                                 <th>Existencias</th>

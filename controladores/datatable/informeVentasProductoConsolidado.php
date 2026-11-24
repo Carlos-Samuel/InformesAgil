@@ -3,6 +3,7 @@ require_once '../Connection.php';
 require_once '../EnvLoader.php';
 require_once '../DbfReader.php';
 require_once '../TipMovInvLoader.php';
+require_once '../Devoluciones.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -86,9 +87,11 @@ try {
     /* ============================================================
        PASO 1 — Consulta principal MySQL SIN existencias
        ============================================================ */
-    $whereVentas  = "WHERE ve.vtafec BETWEEN ? AND ?";
-    $paramsVentas = [$fechaInicio, $fechaFin];
-    $typesVentas  = "ss";
+    // Ventas (por fecha de factura) y devoluciones (por fecha de la nota crédito)
+    // se unen en un solo conjunto de líneas; las devoluciones van en negativo.
+    $whereVentas  = "WHERE prod.procod IS NOT NULL AND TRIM(prod.procod) <> ''";
+    $paramsVentas = [$fechaInicio, $fechaFin, $fechaInicio, $fechaFin];
+    $typesVentas  = "ssss";
 
     agregarFiltroMultiple($whereVentas, $paramsVentas, $typesVentas, 'ven.venid', $vendedor);
     agregarFiltroMultiple($whereVentas, $paramsVentas, $typesVentas, 'ven.empid', $empresa);
@@ -104,31 +107,56 @@ try {
             prod.prorefer  AS registro_ica,
             prod.pronom    AS nombre_producto,
 
-            SUM(vedet.vtacant) AS cantidad,
+            SUM(lin.cant_vendida)   AS cantidad_vendida,
+            SUM(lin.cant_devuelta)  AS cantidad_devuelta,
+            SUM(lin.cant_vendida - lin.cant_devuelta) AS cantidad,
 
             CASE
-                WHEN SUM(vedet.vtacant) = 0 THEN 0
-                ELSE ROUND(SUM(vedet.vtacant * vedet.vtavlruni) / SUM(vedet.vtacant), 2)
+                WHEN SUM(lin.cant_vendida - lin.cant_devuelta) = 0 THEN 0
+                ELSE ROUND(SUM(lin.valor) / SUM(lin.cant_vendida - lin.cant_devuelta), 2)
             END AS valor_unitario,
 
-            SUM(vedet.vtacant * vedet.vtavlruni) AS subtotal,
+            SUM(lin.valor) AS subtotal,
 
             gru.grpnom     AS grupo,
             subgru.subnom  AS subgrupo,
             mar.marnom     AS marca
 
-        FROM ventas AS ve
-        LEFT JOIN ventasdet  AS vedet   ON ve.vtaid = vedet.vtaid
-        LEFT JOIN productos  AS prod    ON vedet.proid = prod.proid
-        LEFT JOIN vendedor   AS ven     ON ve.venid = ven.venid
+        FROM (
+            SELECT
+                vedet.proid,
+                ve.venid,
+                ve.prfid,
+                vedet.vtacant                    AS cant_vendida,
+                0                                AS cant_devuelta,
+                vedet.vtacant * vedet.vtavlruni  AS valor
+            FROM ventas AS ve
+            JOIN ventasdet AS vedet ON ve.vtaid = vedet.vtaid
+            WHERE ve.vtafec BETWEEN ? AND ?
+
+            UNION ALL
+
+            SELECT
+                dd.proid,
+                v.venid,
+                d.prfid,
+                0                                AS cant_vendida,
+                dd.devcant                       AS cant_devuelta,
+                -" . DEV_VALOR_LINEA . "         AS valor
+            FROM tbl_devolucion AS d
+            JOIN tbl_devolucion_detalle AS dd ON dd.devid = d.devid
+            LEFT JOIN ventas AS v ON v.vtaid = d.docid
+            WHERE " . DEV_CONDICION . "
+              AND d.devfec BETWEEN ? AND ?
+        ) AS lin
+        LEFT JOIN productos  AS prod    ON lin.proid = prod.proid
+        LEFT JOIN vendedor   AS ven     ON lin.venid = ven.venid
         LEFT JOIN inmarca    AS mar     ON prod.marid = mar.marid
         LEFT JOIN ingrupos   AS gru     ON prod.grpid = gru.grpid
         LEFT JOIN insubgrupo AS subgru  ON prod.subid = subgru.subid
-        LEFT JOIN prefijo    AS pre     ON ve.prfid = pre.prfid
+        LEFT JOIN prefijo    AS pre     ON lin.prfid = pre.prfid
 
         $whereVentas
-        AND prod.procod IS NOT NULL
-        AND TRIM(prod.procod) <> ''
 
         GROUP BY
             prod.proid,
@@ -162,6 +190,8 @@ try {
     while ($row = $result->fetch_assoc()) {
         $procod = normalizarProcod($row['codigo_producto'] ?? '');
 
+        $row['cantidad_vendida'] = (float)($row['cantidad_vendida'] ?? 0);
+        $row['cantidad_devuelta'] = (float)($row['cantidad_devuelta'] ?? 0);
         $row['cantidad'] = (float)($row['cantidad'] ?? 0);
         $row['valor_unitario'] = (float)($row['valor_unitario'] ?? 0);
         $row['subtotal'] = (float)($row['subtotal'] ?? 0);

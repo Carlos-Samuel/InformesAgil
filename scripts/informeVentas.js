@@ -206,10 +206,12 @@ function cargarTabla(datosFiltro) {
             data: datosFiltro
         },
         columns: [
+            { data: 'tipo_documento' },
             { data: 'fecha_factura' },
             { data: 'prefijo' },
             { data: 'prefijo_nombre' },
             { data: 'numero_factura' },
+            { data: 'factura_afectada' },
             { data: 'codigo_vendedor' },
             { data: 'nombre_vendedor' },
             { data: 'tercero_nit' },
@@ -305,6 +307,12 @@ function cargarTabla(datosFiltro) {
 
             }
         ],
+        order: [], // respetar el orden del servidor: fecha y hora, ventas y devoluciones mezcladas
+        createdRow: function (row, data) {
+            if (data.tipo_documento !== 'Venta') {
+                $(row).addClass('fila-devolucion');
+            }
+        },
         drawCallback: function (settings) {
             let api = this.api();
             let data = api.rows({ page: 'all' }).data();

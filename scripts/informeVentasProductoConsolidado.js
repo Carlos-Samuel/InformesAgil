@@ -209,6 +209,8 @@ function cargarTabla(datosFiltro) {
             { data: 'codigo_producto' },
             { data: 'registro_ica' },
             { data: 'nombre_producto' },
+            { data: 'cantidad_vendida' },
+            { data: 'cantidad_devuelta' },
             { data: 'cantidad' },
             {
                 data: 'valor_unitario',
@@ -318,11 +320,18 @@ function cargarTabla(datosFiltro) {
             const api = this.api();
             const data = api.rows({ page: 'all' }).data();
 
+            let totalVendida = 0;
+            let totalDevuelta = 0;
             let totalCantidad = 0;
             let totalSubtotal = 0;
             let totalExistencias = 0;
 
             for (let i = 0; i < data.length; i++) {
+                const vend = parseFloat(data[i].cantidad_vendida);
+                const dev  = parseFloat(data[i].cantidad_devuelta);
+                if (!isNaN(vend)) totalVendida += vend;
+                if (!isNaN(dev))  totalDevuelta += dev;
+
                 const cant = parseFloat(data[i].cantidad);
                 const sub  = parseFloat(data[i].subtotal);
                 const exi  = parseFloat(data[i].existencias);
@@ -333,6 +342,8 @@ function cargarTabla(datosFiltro) {
             }
 
             $('#totalesVisual').show();
+            $('#totalVendida').text(totalVendida.toLocaleString('es-CO'));
+            $('#totalDevuelta').text(totalDevuelta.toLocaleString('es-CO'));
             $('#totalCantidad').text(totalCantidad.toLocaleString('es-CO'));
             $('#totalSubtotal').text(totalSubtotal.toLocaleString('es-CO', { style: 'currency', currency: 'COP' }));
             $('#totalExistencias').text(totalExistencias.toLocaleString('es-CO'));

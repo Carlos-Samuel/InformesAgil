@@ -152,6 +152,18 @@ Variables que usa el código (los valores reales están en `.env`, no se reprodu
 
 Nota: el filtro "empresa" en los informes se aplica sobre `ven.empid` (empresa del **vendedor**).
 
+**Devoluciones de venta (notas crédito, incluidas las electrónicas, prefijo `NCVP`)** — ver `controladores/Devoluciones.php`:
+- `tbl_devolucion` (`d`): cabecera; `docid` → `ventas.vtaid` de la factura afectada; `devfec`, `devnum`,
+  `prfid` (prefijo de la factura), `prfdevid` (prefijo de la nota), `devsubt`, `devcod` (motivo: 1 parcial,
+  2 anulación, 3 rebaja, 4 ajuste precio, 5 otros).
+- `tbl_devolucion_detalle` (`dd`): `proid`, `devcant`, `devvlr` (unitario), `devcosto` (unitario).
+- Sólo `devtipo = 'FAV'` (COM = compras, RMC = remisiones) y `devestado = 0` (1 = anulada).
+- Se restan en el periodo de la **fecha de la devolución** (`devfec`). Vendedor/empresa/prefijo para los
+  filtros se toman de la factura original.
+- Valor de línea: `devcant * devvlr`, o `devvlr` si `devcant = 0` (notas sólo de valor).
+- Aplicado en: consolidado (cantidad vendida / devuelta / neta), informe detallado (filas "Devolución" en
+  negativo con la factura afectada) y los 4 gráficos del dashboard.
+
 ### 6.2 MySQL parametrización
 - `dashboard_layout(usuario_id, grafico_id, pos_x, pos_y, ancho, alto, visible)`.
 
@@ -226,7 +238,9 @@ No hay tests automatizados, linter ni pipeline de CI.
 - Parser de `.env` duplicado en `Connection` / `ConnectionParametrizacion` (no usan `EnvLoader`).
 - Dos reglas de signos coexisten en `TipMovInvLoader` (ver §7).
 - Solape de lotes con `readRecords` cuando hay registros borrados (ver §8).
-- `comparativoVentasIngresoCosto` suma `vtavlruni` (valor unitario) y `vtacosto` sin multiplicar por cantidad.
+- `ventasdet.vtacosto` tiene valores corruptos en algunas líneas (p. ej. 78.574.008.251 o negativos en 2025),
+  lo que distorsiona el costo/utilidad del gráfico `comparativoVentasIngresoCosto`.
+- `ventas.VtaEstado = 1` (443 facturas, significado sin confirmar — ¿anuladas?) no se excluye en ningún informe.
 - `partes/head.php` declara `<title>` dos veces; se cargan dos versiones de Bootstrap JS.
 - Gran cantidad de assets de plantilla sin uso (`sass/`, leaflet, slick, mapas, varias copias de feather/bootstrap).
 - `controladores/cargarLayout.php` vacío; `descargas/` con archivos generados antiguos versionados.

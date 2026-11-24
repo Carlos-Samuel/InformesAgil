@@ -62,10 +62,12 @@
                     <table id="tablaInforme" class="table table-bordered table-striped" style="width: 100%;">
                         <thead>
                             <tr>
-                                <th>Fecha Factura</th>
+                                <th>Tipo</th>
+                                <th>Fecha</th>
                                 <th>Prefijo</th>
                                 <th>Prefijo</th>
-                                <th>#Fac</th>
+                                <th>#Doc</th>
+                                <th>Fac. Afectada</th>
                                 <th>#Ven</th>
                                 <th>Vendedor</th>
                                 <th>Ter Nit</th>
